@@ -36,7 +36,7 @@ A carefully curated collection of development environment configurations, focusi
 1. **Clone this repository**
 
    ```bash
-   git clone https://github.com/yourusername/my-dev-setup.git
+   git clone https://github.com/omarxkhalid/my-dev-setup.git
    ```
 
 2. **Install Prerequisites**
@@ -48,14 +48,6 @@ A carefully curated collection of development environment configurations, focusi
 3. **Apply Configurations**
    - Copy starship.toml to ~/.config/starship/
    - Copy VS Code settings to your settings.json
-
-## 🔄 Keeping Updated
-
-To update VS Code extensions list:
-
-```powershell
-code --list-extensions | ForEach-Object { "- **[$_](https://marketplace.visualstudio.com/items?itemName=$_)**" } | Set-Content vscode/extensions.md
-```
 
 ## 📞 Contact
 
