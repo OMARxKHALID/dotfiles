@@ -1,0 +1,49 @@
+# User Information
+[username]
+format = " [╭─$user]($style)"
+style_user = "bold red"
+style_root = "bold red"
+show_always = true
+
+# Hostname Information
+[hostname]
+format = "($style) in "
+style = "bold dimmed red"
+trim_at = "-"
+ssh_only = false
+disabled = false
+
+# Current Directory
+[directory]
+style = "purple"
+truncation_length = 0
+truncate_to_repo = true
+truncation_symbol = "repo: "
+
+# Git Status
+[git_status]
+format = "[ ]($style) via "
+ahead = "⇡${count}"
+diverged = "⇕⇡${ahead_count}⇣${behind_count}"
+behind = "⇣${count}"
+deleted = "x"
+
+# Command Execution Duration
+[cmd_duration]
+min_time = 1
+format = "took [$duration]($style)"
+disabled = false
+
+# Prompt Character
+[character]
+success_symbol = " [╰─λ](bold red)"
+error_symbol = " [╰─×](bold red)"
+
+# Node.js Version
+[nodejs]
+symbol = "🤖"
+format = '[${symbol} ${version}](red) [${path}]($style)'
+style = "bold cyan"
+detect_files = ["package.json"]
+detect_folders = ["node_modules"]
+disabled = false
