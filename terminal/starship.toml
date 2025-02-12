@@ -22,7 +22,7 @@ truncation_symbol = "repo: "
 
 # Git Status
 [git_status]
-format = "[ ]($style) via "
+format = "[ ]($style) "
 ahead = "⇡${count}"
 diverged = "⇕⇡${ahead_count}⇣${behind_count}"
 behind = "⇣${count}"
@@ -42,7 +42,7 @@ error_symbol = " [╰─×](bold red)"
 # Node.js Version
 [nodejs]
 symbol = "🤖"
-format = '[${symbol} ${version}](red) [${path}]($style)'
+format = '[${symbol} ${version}](bold red) [${path}]($style)'
 style = "bold cyan"
 detect_files = ["package.json"]
 detect_folders = ["node_modules"]
