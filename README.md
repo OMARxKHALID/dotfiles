@@ -1,59 +1,68 @@
-# My Development Environment Setup
+# Dotfiles Configuration
 
-A carefully curated collection of development environment configurations, focusing on modern web development with React, TypeScript, and Node.js. This repository serves as both a backup of my personal settings and a reference for other developers.
+A comprehensive collection of development environment configurations focused on Windows development with PowerShell, VS Code, and modern web technologies.
 
-## 🚀 Features
+## 🎯 Overview
 
-- **Terminal Enhancement**: Custom Starship prompt configuration for PowerShell
-- **VS Code Optimization**: Curated extensions and settings for web development
-- **Modern Font Setup**: JetBrains Mono Nerd Font configuration for clear code readability
-- **Development Tools**: Configurations for ESLint, Prettier, and other essential tools
+This repository contains my personal development environment configurations, including terminal customizations, VS Code settings, and font configurations for an optimal development experience.
 
-## 🗂️ Repository Structure
+## 📂 Repository Structure
 
 ```
 .
 ├── terminal/
-│   ├── starship.toml    # Custom terminal prompt configuration
-│   ├── starship.md      # Terminal setup instructions
-│   └── icons.md         # Terminal icons guide and configuration
+│   ├── starship.md      # Starship prompt setup guide
+│   └── icons.md         # Terminal icons configuration
 ├── vscode/
-│   ├── settings.json    # VS Code preferences and settings
-│   └── extensions.md    # Curated list of VS Code extensions
-└── nerd-font.md         # Font installation guide
+│   └── extensions.md    # List of essential VS Code extensions
+└── nerd-font.md         # JetBrains Mono Nerd Font setup
 ```
 
-## 💻 Tech Stack
+## ⚙️ Key Components
 
-- **Primary Languages**: TypeScript, JavaScript
-- **Frameworks**: React, Next.js
-- **Package Managers**: npm, bun
-- **Editor**: VS Code with 40+ productivity extensions
-- **Terminal**: PowerShell with Starship prompt
+- **Terminal Customization**
 
-## 🛠️ Quick Setup
+  - Starship prompt for PowerShell
+  - Terminal-Icons for enhanced directory listings
+  - Custom PowerShell profile configurations
 
-1. **Clone this repository**
+- **VS Code Setup**
 
-   ```bash
-   git clone https://github.com/omarxkhalid/my-dev-setup.git
-   ```
+  - 35+ curated extensions for web development
+  - React/TypeScript development optimizations
+  - Development tools and productivity enhancements
 
-2. **Install Prerequisites**
+- **Font Configuration**
+  - JetBrains Mono Nerd Font
+  - Optimized for coding and terminal use
 
-   - Install JetBrains Mono Nerd Font (see nerd-font.md)
-   - Install Starship prompt (see terminal/starship.md)
-   - Install VS Code extensions (see vscode/extensions.md)
+## 🚀 Quick Start
 
-3. **Apply Configurations**
-   - Copy starship.toml to ~/.config/starship/
-   - Copy VS Code settings to your settings.json
+1. **Font Setup**
 
-## 📞 Contact
+   - Follow instructions in `nerd-font.md` to install JetBrains Mono Nerd Font
 
-- Email: mirxaumar1212@gmail.com
-- Instagram: [@omarxoxo.\_](https://www.instagram.com/omarxoxo._)
+2. **Terminal Configuration**
+
+   - Install and configure Starship (see `terminal/starship.md`)
+   - Set up Terminal-Icons (see `terminal/icons.md`)
+
+3. **VS Code Setup**
+   - Install recommended extensions from `vscode/extensions.md`
+
+## 💻 Technologies
+
+- PowerShell with Starship prompt
+- VS Code as primary editor
+- Terminal-Icons for enhanced CLI experience
+- Modern web development tools and extensions
+
+## 📝 Notes
+
+- Configurations are optimized for Windows development environment
+- Focus on React/TypeScript development workflow
+- Regular updates to extension list and configurations
 
 ## 📄 License
 
-This repository is released under the MIT License. Feel free to use, modify, and share.
+MIT License - Feel free to use and modify these configurations for your own setup.

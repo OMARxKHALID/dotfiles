@@ -49,6 +49,7 @@
 33. **[PDF](https://marketplace.visualstudio.com/items?itemName=tomoki1207.pdf)** by Tomoki 1207
 34. **[Error Lens](https://marketplace.visualstudio.com/items?itemName=usernamehw.errorlens)** by Username HW
 35. **[Import Cost](https://marketplace.visualstudio.com/items?itemName=wix.vscode-import-cost)** by Wix
+36. **[Custom UI Style](https://marketplace.visualstudio.com/items?itemName=subframe7536.custom-ui-style)** by Subframe7536
 
 ## Auto-Update Extensions List
 

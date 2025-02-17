@@ -68,7 +68,6 @@
   "editor.tabCompletion": "on",
   "editor.inlineSuggest.enabled": true,
   "window.zoomLevel": 1.5,
-  "breadcrumbs.enabled": false,
   "editor.glyphMargin": false,
   "editor.showFoldingControls": "never",
   "window.title": " ",
@@ -83,40 +82,93 @@
   "workbench.iconTheme": "material-icon-theme",
   "workbench.colorTheme": "Vim Dark Medium",
   "workbench.editor.editorActionsLocation": "hidden",
-  "window.commandCenter": false,
   "workbench.layoutControl.enabled": false,
   "explorer.compactFolders": false,
-  "window.menuBarVisibility": "compact",
-  "custom-ui-style.font.sansSerif": "Dank Mono",
-  "custom-ui-style.stylesheet": {
-    ".notification-toast": "box-shadow: none !important",
-    ".quick-input-widget.show-file-icons": "box-shadow: none !important",
-    ".quick-input-widget": "top: 25vh !important",
-    ".quick-input-list .scrollbar": "display: none",
-    ".monaco-action-bar.quick-input-inline-action-bar": "display: none",
-    ".editor-widget.find-widget": "box-shadow: none; border-radius: 4px",
-    ".quick-input-titlebar": "background: #100B15 !important",
-    ".monaco-workbench .part.editor > .content .editor-group-container > .title.title-border-bottom:after": "display: none",
-    ".monaco-scrollable-element > .shadow.top": "display: none",
-    ".sidebar .title-label": "padding: 0 !important",
-    ".sidebar": "border: none !important",
-    ".monaco-workbench .monaco-list:not(.element-focused):focus:before": "outline: none !important",
-    ".monaco-list-row.focused": "outline: none !important",
-    ".monaco-editor .scroll-decoration": "display: none",
-    ".title-actions": "display: none !important",
-    ".title.show-file-icons .label-container .monaco-icon-label.file-icon": "justify-content: center; padding: 0 !important",
-    ".title .monaco-icon-label:after": "margin-right: 0",
-    ".title .monaco-icon-label.file-icon": "margin: 0 60px",
-    ".monaco-editor .cursors-layer .cursor": "background-image: linear-gradient(135deg, #ffaffc 10%, #DA70D6 100%)"
-  },
   "editor.codeLens": false,
   "workbench.tree.renderIndentGuides": "none",
-  "workbench.tree.indent": 8,
+  "workbench.tree.indent": 10,
   "material-icon-theme.hidesExplorerArrows": true,
   "editor.scrollbar.horizontal": "hidden",
   "editor.scrollbar.vertical": "auto",
-  "editor.quickSuggestions": {
-    "other": "off"
+  "editor.scrollbar.verticalScrollbarSize": 6,
+  "editor.suggestOnTriggerCharacters": false,
+  "window.menuBarVisibility": "compact",
+  "terminal.integrated.persistentSessionScrollback": 0,
+  "terminal.integrated.scrollback": 0,
+  "custom-ui-style.font.sansSerif": "'JetBrainsMono Nerd Font', monospace",
+  "custom-ui-style.stylesheet": {
+    ".notification-toast": "box-shadow: none !important",
+    ".quick-input-widget.show-file-icons": "box-shadow: none !important",
+    ".quick-input-list .scrollbar": "display: none",
+    ".monaco-action-bar.quick-input-inline-action-bar": "display: none",
+    ".editor-widget.find-widget": {
+      "box-shadow": "none",
+      "border-radius": "4px"
+    },
+    ".monaco-scrollable-element > .shadow.top": {
+      "display": "none"
+    },
+    ".sidebar .title-label": {
+      "padding": "0 !important"
+    },
+    ".sidebar": {
+      "border": "none !important"
+    },
+    ".monaco-workbench .monaco-list:not(.element-focused):focus:before": {
+      "outline": "none !important"
+    },
+    ".monaco-list-row.focused": {
+      "outline": "none !important"
+    },
+    ".monaco-editor .scroll-decoration": {
+      "display": "none"
+    },
+    ".title-actions": {
+      "display": "none !important"
+    },
+    ".monaco-workbench .part.titlebar > .titlebar-container > .titlebar-left > .window-appicon:not(.codicon)": {
+      "background-image": "none !important"
+    },
+    ".letterpress": {
+      "background-image": "none !important"
+    },
+    ".monaco-workbench .xterm": {
+      "margin-bottom": "15px !important",
+      "padding-left": "5px !important"
+    },
+    ".monaco-workbench .xterm .xterm-scrollable-element": {
+      "margin-left": "0 !important",
+      "padding-left": "0 !important"
+    },
+    ".monaco-workbench .composite.title": {
+      "padding": "0 !important"
+    },
+    ".quick-input-widget": {
+      "top": "25vh !important",
+      "padding": "4px !important",
+      "border-radius": "10px !important"
+    },
+    ".quick-input-widget .quick-input-header": {
+      "padding": "0px !important",
+      "margin-bottom": "5px"
+    },
+    ".quick-input-widget .monaco-inputbox": {
+      "padding": "5px !important",
+      "border-radius": "5px !important"
+    },
+    ".sidebar > .composite.title": "visibility: hidden; position: relative !important;",
+    ".sidebar > .composite.title::before": "visibility: visible; content: \"Project\"; display: flex; justify-content: center; align-items: center; position: absolute; right: 0; left: 0; bottom: 0; top: 0;",
+    ".quick-input-widget .quick-input-list .quick-input-list-entry.quick-input-list-separator-border": {
+      "border-top-width": "0px !important"
+    }
   },
-  "editor.suggestOnTriggerCharacters": false
+  "window.commandCenter": false,
+  "breadcrumbs.enabled": false,
+  "terminal.integrated.profiles.windows": {
+    "PowerShell": {
+      "source": "PowerShell",
+      "icon": "terminal-powershell",
+      "args": ["-nologo"]
+    }
+  }
 }
