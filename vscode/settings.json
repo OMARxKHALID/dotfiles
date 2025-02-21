@@ -2,8 +2,7 @@
   "editor.copyWithSyntaxHighlighting": false,
   "diffEditor.ignoreTrimWhitespace": false,
   "editor.emptySelectionClipboard": false,
-  "workbench.editor.enablePreview": false,
-  "editor.multiCursorModifier": "ctrlCmd",
+  "editor.multiCursorModifier": "alt",
   "files.trimTrailingWhitespace": true,
   "diffEditor.renderSideBySide": false,
   "editor.snippetSuggestions": "top",
@@ -35,13 +34,12 @@
   "editor.formatOnSave": true,
   "diffEditor.wordWrap": "on",
   "notebook.output.wordWrap": true,
-  "editor.fontSize": 16,
-  "editor.minimap.maxColumn": 250,
+  "editor.fontSize": 14,
   "explorer.confirmDelete": false,
   "editor.accessibilitySupport": "off",
   "chat.editor.wordWrap": "on",
   "editor.wordWrap": "on",
-  "editor.fontWeight": "400",
+  "editor.fontWeight": "300",
   "editor.inlineSuggest.suppressSuggestions": true,
   "editor.padding.top": 2,
   "editor.cursorBlinking": "solid",
@@ -59,7 +57,7 @@
   "terminal.integrated.copyOnSelection": true,
   "terminal.integrated.fontFamily": "'JetBrainsMono Nerd Font', monospace",
   "terminal.integrated.cursorBlinking": true,
-  "terminal.integrated.cursorStyle": "line",
+  "terminal.integrated.cursorStyle": "underline",
   "workbench.statusBar.visible": false,
   "terminal.integrated.enablePersistentSessions": false,
   "editor.cursorStyle": "underline",
@@ -67,35 +65,41 @@
   "editor.cursorSmoothCaretAnimation": "on",
   "editor.tabCompletion": "on",
   "editor.inlineSuggest.enabled": true,
-  "window.zoomLevel": 1.5,
+  "window.zoomLevel": 2,
   "editor.glyphMargin": false,
   "editor.showFoldingControls": "never",
   "window.title": " ",
   "terminal.integrated.fontSize": 12,
   "window.newWindowProfile": "Default",
-  "workbench.activityBar.location": "hidden",
   "glassit.alpha": 250,
   "terminal.integrated.shellIntegration.enabled": false,
   "terminal.integrated.shellIntegration.decorationsEnabled": "never",
   "github.copilot.chat.terminalChatLocation": "terminal",
   "git.autofetch": true,
   "workbench.iconTheme": "material-icon-theme",
-  "workbench.colorTheme": "Vim Dark Medium",
+  "workbench.colorTheme": "Vim Dark Soft",
   "workbench.editor.editorActionsLocation": "hidden",
-  "workbench.layoutControl.enabled": false,
   "explorer.compactFolders": false,
   "editor.codeLens": false,
   "workbench.tree.renderIndentGuides": "none",
-  "workbench.tree.indent": 10,
+  "workbench.tree.indent": 8,
   "material-icon-theme.hidesExplorerArrows": true,
   "editor.scrollbar.horizontal": "hidden",
   "editor.scrollbar.vertical": "auto",
   "editor.scrollbar.verticalScrollbarSize": 6,
+  "terminal.integrated.suggest.enabled": true,
   "editor.suggestOnTriggerCharacters": false,
-  "window.menuBarVisibility": "compact",
-  "terminal.integrated.persistentSessionScrollback": 0,
-  "terminal.integrated.scrollback": 0,
+  //   "terminal.integrated.persistentSessionScrollback": 0,
+  //   "terminal.integrated.scrollback": 0,
   "custom-ui-style.font.sansSerif": "'JetBrainsMono Nerd Font', monospace",
+  //   "search.exclude": {
+  //     "**/public/{[^i],?[^n]}*": true,
+  //     "**/node_modules": true,
+  //     "**/dist": true,
+  //     "**/composer.lock": true,
+  //     "**/package-lock.json": true,
+  //     "storage": true
+  //   },
   "custom-ui-style.stylesheet": {
     ".notification-toast": "box-shadow: none !important",
     ".quick-input-widget.show-file-icons": "box-shadow: none !important",
@@ -127,14 +131,15 @@
       "display": "none !important"
     },
     ".monaco-workbench .part.titlebar > .titlebar-container > .titlebar-left > .window-appicon:not(.codicon)": {
-      "background-image": "none !important"
+      "background-image": "none !important",
+      "position": "absolute !important"
     },
     ".letterpress": {
       "background-image": "none !important"
     },
     ".monaco-workbench .xterm": {
-      "margin-bottom": "15px !important",
-      "padding-left": "5px !important"
+      "margin-bottom": "18px !important",
+      "padding-left": "3px !important"
     },
     ".monaco-workbench .xterm .xterm-scrollable-element": {
       "margin-left": "0 !important",
@@ -157,18 +162,25 @@
       "border-radius": "5px !important"
     },
     ".sidebar > .composite.title": "visibility: hidden; position: relative !important;",
-    ".sidebar > .composite.title::before": "visibility: visible; content: \"Project\"; display: flex; justify-content: center; align-items: center; position: absolute; right: 0; left: 0; bottom: 0; top: 0;",
+    ".sidebar > .composite.title::before": "visibility: visible; content: 'Project'; display: flex; justify-content: center; align-items: center; position: absolute; right: 0; left: 0; bottom: 0; top: 0; font-weight: bold !important; font-size: 12px !important; text-transform: uppercase;",
     ".quick-input-widget .quick-input-list .quick-input-list-entry.quick-input-list-separator-border": {
       "border-top-width": "0px !important"
     }
   },
-  "window.commandCenter": false,
-  "breadcrumbs.enabled": false,
   "terminal.integrated.profiles.windows": {
     "PowerShell": {
       "source": "PowerShell",
       "icon": "terminal-powershell",
       "args": ["-nologo"]
     }
-  }
+  },
+  "workbench.panel.showLabels": false,
+  "workbench.activityBar.location": "hidden",
+  "workbench.editor.enablePreview": false,
+  "workbench.layoutControl.enabled": false,
+  "window.commandCenter": false,
+  "debug.console.lineHeight": 1,
+  "terminal.integrated.lineHeight": 0,
+  "breadcrumbs.enabled": false,
+  "window.menuBarVisibility": "compact"
 }
