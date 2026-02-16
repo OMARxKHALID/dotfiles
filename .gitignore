@@ -1,0 +1,6 @@
+# Secrets (API keys, tokens, etc.)
+.zsh_secrets
+
+# OS files
+.DS_Store
+Thumbs.db
