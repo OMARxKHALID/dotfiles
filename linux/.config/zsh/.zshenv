@@ -12,9 +12,6 @@ export VISUAL="$EDITOR"
 export INPUTRC="$XDG_CONFIG_HOME/readline/inputrc"
 export LESSHISTFILE="$XDG_STATE_HOME/less/history"
 
-# zsh-ai
-export ZSH_AI_PROVIDER="gemini"
-[[ -f "$ZDOTDIR/.zsh_secrets" ]] && source "$ZDOTDIR/.zsh_secrets"
 
 # PATH
 typeset -U path

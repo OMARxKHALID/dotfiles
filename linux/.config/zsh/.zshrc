@@ -14,7 +14,7 @@ source "$HOME/.zinit/bin/zinit.zsh"
 # Core plugins
 zinit light zsh-users/zsh-completions
 zinit ice depth=1; zinit light romkatv/powerlevel10k
-zinit light matheusml/zsh-ai
+
 
 # Completion init
 autoload -Uz compinit
