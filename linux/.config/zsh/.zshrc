@@ -55,6 +55,16 @@ zinit ice as"program" pick"bin/fzf" multisrc"shell/completion.zsh shell/key-bind
 zinit light junegunn/fzf
 bindkey '^R' fzf-history-widget
 
+if command -v rg &> /dev/null; then
+    export FZF_DEFAULT_COMMAND='rg --files --hidden --glob "!.git/*"'
+    export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
+fi
+
+# Zoxide integration
+if command -v zoxide &> /dev/null; then
+    eval "$(zoxide init zsh)"
+fi
+
 # External aliases
 [[ -f "$HOME/.config/aliasrc" ]] && source "$HOME/.config/aliasrc"
 
@@ -68,3 +78,6 @@ zinit light zsh-users/zsh-syntax-highlighting
 
 # P10k theme
 [[ ! -f "$ZDOTDIR/.p10k.zsh" ]] || source "$ZDOTDIR/.p10k.zsh"
+
+# bun completions
+[ -s "$HOME/.bun/_bun" ] && source "$HOME/.bun/_bun"

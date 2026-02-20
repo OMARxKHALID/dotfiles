@@ -6,10 +6,17 @@ alias ...='cd ../..'
 alias ....='cd ../../..'
 
 # Listing
-alias ls='ls --color=auto'
-alias ll='ls -alF --color=auto'
-alias la='ls -A --color=auto'
-alias l='ls -CF --color=auto'
+if command -v eza &> /dev/null; then
+    alias ls='eza --color=always --icons=always --group-directories-first'
+    alias ll='eza -alF --color=always --icons=always --group-directories-first'
+    alias la='eza -A --color=always --icons=always --group-directories-first'
+    alias l='eza -CF --color=always --icons=always --group-directories-first'
+else
+    alias ls='ls --color=auto'
+    alias ll='ls -alF --color=auto'
+    alias la='ls -A --color=auto'
+    alias l='ls -CF --color=auto'
+fi
 
 # Grep
 alias grep='grep --color=auto'
