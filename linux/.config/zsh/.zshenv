@@ -6,6 +6,9 @@ export XDG_CACHE_HOME="$HOME/.cache"
 export XDG_DATA_HOME="$HOME/.local/share"
 export XDG_STATE_HOME="$HOME/.local/state"
 
+# Ensure essential directories exist
+mkdir -p "$XDG_CACHE_HOME/zsh" "$XDG_STATE_HOME"/{zsh,fzf,less,bash}
+
 # Defaults
 export EDITOR="nano"
 export VISUAL="$EDITOR"

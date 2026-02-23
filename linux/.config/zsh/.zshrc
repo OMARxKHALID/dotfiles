@@ -18,7 +18,6 @@ zinit ice depth=1; zinit light romkatv/powerlevel10k
 # Completion init
 autoload -Uz compinit
 _comp_path="${XDG_CACHE_HOME:-$HOME/.cache}/zsh/zcompdump-${(%):-%n}"
-[[ -d "${_comp_path:h}" ]] || mkdir -p "${_comp_path:h}"
 compinit -i -d "$_comp_path"
 zinit cdreplay -q
 unset _comp_path
@@ -28,12 +27,18 @@ zinit ice wait"0a" lucid; zinit light Aloxaf/fzf-tab
 zinit ice wait"0b" lucid; zinit light zsh-users/zsh-autosuggestions
 
 # History settings
-HISTSIZE=5000
-SAVEHIST=5000
 HISTFILE="${XDG_STATE_HOME:-$HOME/.local/state}/zsh/history"
-[[ -d "${HISTFILE:h}" ]] || mkdir -p "${HISTFILE:h}"
-setopt appendhistory sharehistory hist_ignore_space hist_ignore_all_dups \
-       hist_save_no_dups hist_ignore_dups hist_find_no_dups
+HISTSIZE=10000
+SAVEHIST=10000
+
+# History options
+setopt share_history          # Share history between all sessions
+setopt extended_history       # Record timestamp in history
+setopt hist_ignore_all_dups   # Delete old duplicate when new one is added
+setopt hist_expire_dups_first # Expire duplicates first when trimming history
+setopt hist_ignore_space      # Don't record lines starting with a space
+setopt hist_save_no_dups      # Don't save duplicates to file
+setopt hist_reduce_blanks     # Remove superfluous blanks
 
 # Shell options
 CORRECT_IGNORE='.*'
@@ -58,6 +63,9 @@ if command -v rg &> /dev/null; then
     export FZF_DEFAULT_COMMAND='rg --files --hidden --glob "!.git/*"'
     export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
 fi
+
+# Persistent FZF search history
+export FZF_DEFAULT_OPTS="${FZF_DEFAULT_OPTS} --history=${XDG_STATE_HOME:-$HOME/.local/state}/fzf/history"
 
 # Zoxide integration
 if command -v zoxide &> /dev/null; then
