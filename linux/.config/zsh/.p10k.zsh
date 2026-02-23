@@ -57,7 +57,8 @@
     nodenv                  # node.js version from nodenv (https://github.com/nodenv/nodenv)
     nvm                     # node.js version from nvm (https://github.com/nvm-sh/nvm)
     nodeenv                 # node.js environment (https://github.com/ekalinin/nodeenv)
-    node_version          # node.js version
+    # node_version          # node.js version
+    # bun                   # bun.js version
     # go_version            # go version (https://golang.org)
     # rust_version          # rustc version (https://www.rust-lang.org)
     # dotnet_version        # .NET version (https://dotnet.microsoft.com)
@@ -1042,6 +1043,21 @@
   typeset -g POWERLEVEL9K_NODEENV_{LEFT,RIGHT}_DELIMITER=
   # Custom icon.
   # typeset -g POWERLEVEL9K_NODEENV_VISUAL_IDENTIFIER_EXPANSION='⭐'
+
+  ####################################[ bun: bun version ]####################################
+  typeset -g POWERLEVEL9K_BUN_FOREGROUND=3
+
+  function prompt_bun() {
+    [[ -f package.json || -f bun.lockb || -f bun.lock || -f bunfig.toml ]] || return
+    (( $+commands[bun] )) || return
+    local v
+    v=$(bun --version 2>/dev/null) || return
+    p10k segment -f $POWERLEVEL9K_BUN_FOREGROUND -i '🥟' -t "$v"
+  }
+
+  function instant_prompt_bun() {
+    prompt_bun
+  }
 
   ##############################[ node_version: node.js version ]###############################
   # Node version color.

@@ -15,12 +15,11 @@ source "$HOME/.zinit/bin/zinit.zsh"
 zinit light zsh-users/zsh-completions
 zinit ice depth=1; zinit light romkatv/powerlevel10k
 
-
 # Completion init
 autoload -Uz compinit
 _comp_path="${XDG_CACHE_HOME:-$HOME/.cache}/zsh/zcompdump-${(%):-%n}"
 [[ -d "${_comp_path:h}" ]] || mkdir -p "${_comp_path:h}"
-compinit -d "$_comp_path"
+compinit -i -d "$_comp_path"
 zinit cdreplay -q
 unset _comp_path
 
@@ -73,11 +72,8 @@ alias zshrc='${EDITOR:-nano} $ZDOTDIR/.zshrc'
 alias reloadzsh='source $ZDOTDIR/.zshrc'
 
 # Syntax highlighting
-zinit ice wait"0c" lucid atinit"ZINIT[COMPINIT_OPTS]=-C; zicompinit; zicdreplay"
+zinit ice wait"0c" lucid
 zinit light zsh-users/zsh-syntax-highlighting
 
 # P10k theme
 [[ ! -f "$ZDOTDIR/.p10k.zsh" ]] || source "$ZDOTDIR/.p10k.zsh"
-
-# bun completions
-[ -s "$HOME/.bun/_bun" ] && source "$HOME/.bun/_bun"

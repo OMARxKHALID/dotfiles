@@ -27,6 +27,7 @@ alias egrep='egrep --color=auto'
 alias c='clear'
 alias cls='clear'
 alias h='history'
+alias nf='neofetch'
 
 # Cleanup
 alias rem='rm -rI'
@@ -56,6 +57,6 @@ alias cp='cp -i'
 alias mv='mv -i'
 
 # Gnome terminal colors
-alias stc='dconf dump /org/gnome/terminal/legacy/profiles:/:b1dcc9dd-5262-4d8d-a863-c897e6d979b9/ > "$XDG_CONFIG_HOME/tcs-gruvbox.dconf"'
-alias ltc='dconf load /org/gnome/terminal/legacy/profiles:/:b1dcc9dd-5262-4d8d-a863-c897e6d979b9/ < "$XDG_CONFIG_HOME/tcs-gruvbox.dconf"'
-alias etc='${EDITOR:-nano} "$XDG_CONFIG_HOME/tcs-gruvbox.dconf"'
+alias stc='dconf dump /org/gnome/terminal/legacy/profiles:/:b1dcc9dd-5262-4d8d-a863-c897e6d979b9/ > "$XDG_CONFIG_HOME/terminal/tcs-gruvbox.dconf"'
+alias ltc='dconf load /org/gnome/terminal/legacy/profiles:/:b1dcc9dd-5262-4d8d-a863-c897e6d979b9/ < "$XDG_CONFIG_HOME/terminal/tcs-gruvbox.dconf"'
+alias etc='${EDITOR:-nano} "$XDG_CONFIG_HOME/terminal/tcs-gruvbox.dconf"'

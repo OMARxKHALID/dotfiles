@@ -16,6 +16,8 @@ My development environment configs for Windows and Linux.
     ├── .bashrc       # Bash interactive config
     └── .config/
         ├── aliasrc   # Shared aliases (Bash + Zsh)
+        ├── terminal/
+        │   └── tcs-gruvbox.dconf  # Gruvbox terminal theme
         └── zsh/
             ├── .zshenv   # Zsh environment (XDG, PATH)
             ├── .zshrc    # Zsh interactive (plugins, prompt)

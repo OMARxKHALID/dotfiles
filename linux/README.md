@@ -4,15 +4,16 @@ Zsh + Bash shell config with Powerlevel10k, zinit, and fzf.
 
 ## What's Here
 
-| File                    | What it does                                                 |
-| ----------------------- | ------------------------------------------------------------ |
-| `.zshenv`               | Bootstrap — sets ZDOTDIR, sources the real config            |
-| `.profile`              | Login environment for Bash and display manager (XDG, EDITOR) |
-| `.bashrc`               | Bash interactive config (history, prompt, completion)        |
-| `.config/aliasrc`       | Shared aliases used by both Bash and Zsh                     |
-| `.config/zsh/.zshenv`   | Zsh environment (XDG dirs, PATH, defaults)                   |
-| `.config/zsh/.zshrc`    | Zsh interactive (zinit plugins, completion, history, fzf)    |
-| `.config/zsh/.p10k.zsh` | Powerlevel10k prompt theme                                   |
+| File                                 | What it does                                                 |
+| ------------------------------------ | ------------------------------------------------------------ |
+| `.zshenv`                            | Bootstrap — sets ZDOTDIR, sources the real config            |
+| `.profile`                           | Login environment for Bash and display manager (XDG, EDITOR) |
+| `.bashrc`                            | Bash interactive config (history, prompt, completion)        |
+| `.config/aliasrc`                    | Shared aliases used by both Bash and Zsh                     |
+| `.config/zsh/.zshenv`                | Zsh environment (XDG dirs, PATH, defaults)                   |
+| `.config/zsh/.zshrc`                 | Zsh interactive (zinit plugins, completion, history, fzf)    |
+| `.config/zsh/.p10k.zsh`              | Powerlevel10k prompt theme                                   |
+| `.config/terminal/tcs-gruvbox.dconf` | Gruvbox color scheme for GNOME Terminal                      |
 
 ## How Shell Startup Works
 
@@ -35,9 +36,11 @@ cp linux/.profile ~/
 cp linux/.bashrc ~/
 cp -r linux/.config/zsh ~/.config/
 cp linux/.config/aliasrc ~/.config/
+cp -r linux/.config/terminal ~/.config/
 ```
 
-5. Open a new terminal — zinit will auto-install plugins on first run
+5. Load terminal theme: `dconf load /org/gnome/terminal/legacy/profiles:/:b1dcc9dd-5262-4d8d-a863-c897e6d979b9/ < ~/.config/terminal/tcs-gruvbox.dconf`
+6. Open a new terminal — zinit will auto-install plugins on first run
 
 ## Tools
 
@@ -45,3 +48,6 @@ cp linux/.config/aliasrc ~/.config/
 - **[Powerlevel10k](https://github.com/romkatv/powerlevel10k)** — prompt theme
 - **[fzf](https://github.com/junegunn/fzf)** — fuzzy finder (Ctrl+R for history)
 - **[bat](https://github.com/sharkdp/bat)** — better cat (aliased automatically if installed)
+- **[eza](https://github.com/eza-community/eza)** — modern `ls` replacement with icons
+- **[zoxide](https://github.com/ajeetdsouza/zoxide)** — smarter `cd` command
+- **[ripgrep](https://github.com/BurntSushi/ripgrep)** — fast search (used by fzf)
