@@ -1,147 +1,311 @@
 #!/usr/bin/env python3
-"""Wallpaper Picker — Gruvbox-themed thumbnail grid for selecting wallpapers."""
 
+import fcntl
+import json
 import os
-import subprocess
+import sys
+from urllib.parse import unquote
 
 import gi
+
 gi.require_version("Gtk", "3.0")
 gi.require_version("Gdk", "3.0")
 gi.require_version("GdkPixbuf", "2.0")
-from gi.repository import Gdk, GdkPixbuf, GLib, Gtk
+from gi.repository import Gdk, GdkPixbuf, Gio, GLib, Gtk
 
-# ── Config ──────────────────────────────────────────────────────────────────
+# Configuration
 WALL_DIR = os.path.expanduser("~/Pictures/Wallpapers/fav")
-THUMB_W = 220
-THUMB_H = 124
+THUMB_W, THUMB_H = 160, 90
 COLS = 3
 IMAGE_EXTS = (".jpg", ".jpeg", ".png", ".webp", ".bmp")
+DATA_DIR = os.path.expanduser("~/.local/share/wallpaper-picker")
+STATS_FILE = os.path.join(DATA_DIR, "stats.json")
+RUNTIME_DIR = os.environ.get("XDG_RUNTIME_DIR") or os.path.expanduser("~/.cache")
+LOCK_FILE = os.path.join(RUNTIME_DIR, "wallpaper-picker.lock")
 
-# ── Gruvbox CSS ─────────────────────────────────────────────────────────────
+FIXED_WIN_WIDTH = 600
+FIXED_SCROLL_HEIGHT = 440
+
+os.makedirs(DATA_DIR, exist_ok=True)
+
+# Styling
 CSS = b"""
-window              { background-color: #282828; }
-flowboxchild        { padding: 0; margin: 4px; border-radius: 6px;
-                      border: 3px solid #3c3836; }
-flowboxchild:selected { background-color: transparent; border-color: #d79921; }
-flowboxchild:hover  { border-color: #83a598; }
-.card               { background-color: #3c3836; padding: 4px; }
-label               { color: #ebdbb2; font-size: 10px; padding: 2px; }
-.header             { font-size: 12px; font-weight: bold;
-                      color: #d79921; padding: 8px; }
+window { background-color: #282828; }
+flowbox { margin: 10px; }
+flowboxchild {
+    padding: 0; margin: 5px; border-radius: 8px; border: 3px solid #3c3836;
+    background-color: transparent;
+}
+flowboxchild:selected { background-color: transparent; border-color: #d79921; outline: none; }
+flowboxchild:focus { outline: none; border-color: #83a598; }
+flowboxchild:hover { border-color: #83a598; }
+
+.card { background-color: #3c3836; padding: 4px; border-radius: 6px; }
+label { color: #ebdbb2; font-size: 9px; padding: 2px; }
+
+/* Strong selector for active state to prevent overrides */
+flowboxchild.active,
+flowboxchild.active:selected {
+    border-color: #fabd2f; border-width: 3px; background-color: rgba(250, 189, 47, 0.1);
+}
+flowboxchild.active:focus,
+flowboxchild.active:hover {
+    border-color: #83a598; border-width: 3px; border-style: dashed; background-color: rgba(250, 189, 47, 0.1);
+}
+
+.header { font-size: 13px; font-weight: bold; color: #fabd2f; padding: 10px 14px 6px 14px; }
+
+entry {
+    background-color: #1d2021; color: #ebdbb2; border: 1px solid #3c3836;
+    border-radius: 6px; font-size: 10px; min-height: 24px; padding: 0 8px;
+    margin-left: 14px;
+}
+entry:focus {
+    border-color: #83a598;
+}
+combobox {
+    margin-right: 14px; margin-left: 6px;
+}
+combobox button {
+    background-color: #1d2021; color: #ebdbb2; border: 1px solid #3c3836;
+    border-radius: 6px; font-size: 10px; min-height: 24px; box-shadow: none;
+}
+combobox button:hover {
+    border-color: #83a598;
+}
 """
 
+_bg_settings = Gio.Settings.new("org.gnome.desktop.background")
 
-# ── Helpers ─────────────────────────────────────────────────────────────────
 def get_current_wallpaper():
-    """Return the filesystem path of the current wallpaper."""
-    try:
-        out = subprocess.run(
-            ["gsettings", "get", "org.gnome.desktop.background", "picture-uri-dark"],
-            capture_output=True, text=True,
-        ).stdout.strip().strip("'")
-        return out.replace("file://", "")
-    except Exception:
-        return ""
-
+    uri = _bg_settings.get_string("picture-uri-dark") or _bg_settings.get_string("picture-uri")
+    if not uri: return ""
+    return os.path.abspath(unquote(uri.replace("file://", "")))
 
 def set_wallpaper(path):
-    """Set both light and dark wallpaper URIs."""
     uri = f"file://{path}"
-    for key in ("picture-uri", "picture-uri-dark"):
-        subprocess.run(["gsettings", "set", "org.gnome.desktop.background", key, uri])
+    _bg_settings.set_string("picture-uri", uri)
+    _bg_settings.set_string("picture-uri-dark", uri)
+    update_stats(path)
 
+def update_stats(path):
+    stats = {}
+    if os.path.exists(STATS_FILE):
+        try:
+            with open(STATS_FILE, "r") as f: stats = json.load(f)
+        except: pass
+    fname = os.path.basename(path)
+    stats[fname] = stats.get(fname, 0) + 1
+    with open(STATS_FILE, "w") as f: json.dump(stats, f)
 
-def get_images():
-    """Return sorted list of image filenames in WALL_DIR."""
-    if not os.path.isdir(WALL_DIR):
-        return []
-    return sorted(f for f in os.listdir(WALL_DIR) if f.lower().endswith(IMAGE_EXTS))
+def get_stats():
+    if not os.path.exists(STATS_FILE): return {}
+    try:
+        with open(STATS_FILE, "r") as f: return json.load(f)
+    except: return {}
 
+def get_images(sort_mode="A-Z"):
+    if not os.path.isdir(WALL_DIR): return []
+    files = [f for f in os.listdir(WALL_DIR) if f.lower().endswith(IMAGE_EXTS)]
+    if sort_mode == "Newest":
+        files.sort(key=lambda f: os.path.getmtime(os.path.join(WALL_DIR, f)), reverse=True)
+    elif sort_mode == "Most Used":
+        stats = get_stats()
+        files.sort(key=lambda f: stats.get(f, 0), reverse=True)
+    else: files.sort()
+    return files
 
-# ── Application ─────────────────────────────────────────────────────────────
+def acquire_lock():
+    try:
+        lock_fd = open(LOCK_FILE, "a")
+        fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        return lock_fd
+    except: return None
+
 class WallpaperPicker(Gtk.Window):
     def __init__(self):
         super().__init__(title="Wallpaper Picker")
         self.set_resizable(False)
         self.set_keep_above(True)
         self.set_skip_taskbar_hint(True)
-
-        Gtk.Settings.get_default().set_property("gtk-application-prefer-dark-theme", True)
+        self.set_decorated(False)
+        # Fix the window width once and for all
+        self.set_size_request(FIXED_WIN_WIDTH, -1)
 
         css = Gtk.CssProvider()
         css.load_from_data(CSS)
-        Gtk.StyleContext.add_provider_for_screen(
-            Gdk.Screen.get_default(), css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION,
-        )
+        Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), css, 800)
 
-        # Layout
-        vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        self.add(vbox)
+        self.vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        self.vbox.set_border_width(8)
+        self.add(self.vbox)
 
-        header = Gtk.Label(label="↑↓←→ Navigate  ·  Enter Select  ·  Esc Close")
+        header = Gtk.Label(label="Wallpaper Picker")
         header.get_style_context().add_class("header")
-        vbox.pack_start(header, False, False, 0)
+        header.set_xalign(0)
+        self.vbox.pack_start(header, False, False, 0)
+
+        controls = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+        self.vbox.pack_start(controls, False, False, 4)
+
+        self.search_entry = Gtk.SearchEntry(placeholder_text="Filter wallpapers...")
+        self.search_entry.connect("search-changed", self._on_search_changed)
+        self.search_entry.connect("key-press-event", self._on_search_key)
+        controls.pack_start(self.search_entry, True, True, 0)
+
+        self.sort_combo = Gtk.ComboBoxText()
+        for mode in ["A-Z", "Newest", "Most Used"]: self.sort_combo.append_text(mode)
+        self.sort_combo.set_active(0)
+        self.sort_combo.connect("changed", self._on_sort_changed)
+        controls.pack_start(self.sort_combo, False, False, 0)
 
         self.flowbox = Gtk.FlowBox()
         self.flowbox.set_valign(Gtk.Align.START)
+        self.flowbox.set_halign(Gtk.Align.START)
         self.flowbox.set_max_children_per_line(COLS)
         self.flowbox.set_min_children_per_line(COLS)
+        self.flowbox.set_homogeneous(True)
         self.flowbox.set_selection_mode(Gtk.SelectionMode.SINGLE)
         self.flowbox.set_activate_on_single_click(True)
-        vbox.pack_start(self.flowbox, True, True, 0)
+        self.flowbox.set_filter_func(self._filter_func)
 
-        # Populate thumbnails
-        self.paths = {}
-        for filename in get_images():
-            path = os.path.join(WALL_DIR, filename)
+        self.scroll = Gtk.ScrolledWindow()
+        self.scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        # Fix scroll size completely to prevent window jumping/shrinking when filtering
+        self.scroll.set_min_content_height(FIXED_SCROLL_HEIGHT)
+        self.scroll.set_max_content_height(FIXED_SCROLL_HEIGHT)
+        self.scroll.set_min_content_width(FIXED_WIN_WIDTH - 16)
+        self.scroll.set_propagate_natural_height(False)
+        self.scroll.set_propagate_natural_width(False)
+        self.scroll.add(self.flowbox)
+        self.vbox.pack_start(self.scroll, True, True, 0)
 
-            try:
-                pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(path, THUMB_W, THUMB_H, True)
-            except GLib.Error:
-                continue
+        self.paths, self.names = {}, {}
+        self._active_child, self._current = None, get_current_wallpaper()
 
-            card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-            card.get_style_context().add_class("card")
-            card.pack_start(Gtk.Image.new_from_pixbuf(pixbuf), False, False, 0)
-
-            name = os.path.splitext(filename)[0].replace("-", " ").replace("_", " ")[:20]
-            card.pack_start(Gtk.Label(label=name), False, False, 0)
-
-            child = Gtk.FlowBoxChild()
-            child.add(card)
-            self.flowbox.add(child)
-            self.paths[child] = path
-
-        # Signals
         self.flowbox.connect("child-activated", self._on_pick)
         self.connect("key-press-event", self._on_key)
 
-        # Show & position near top of screen
         self.show_all()
-        screen_w = self.get_screen().get_width()
-        win_w = self.get_allocated_width()
-        self.move((screen_w - win_w) // 2, 50)
+        self.present()
+        self._load_images()
 
-        # Highlight current wallpaper (deferred so FlowBox doesn't override)
-        current = get_current_wallpaper()
-        for child, path in self.paths.items():
-            if os.path.abspath(path) == os.path.abspath(current):
-                GLib.idle_add(self.flowbox.select_child, child)
-                break
+        display = Gdk.Display.get_default()
+        monitor = display.get_primary_monitor() or display.get_monitor(0)
+        geo = monitor.get_geometry()
+        self.move((geo.width - FIXED_WIN_WIDTH) // 2, 50)
 
-    def _on_pick(self, _flowbox, child):
-        set_wallpaper(self.paths[child])
+    def _load_images(self, sort_mode="A-Z"):
+        for child in self.flowbox.get_children(): self.flowbox.remove(child)
+        self.paths, self.names, self._active_child = {}, {}, None
+        images = get_images(sort_mode)
+        cur_base = os.path.basename(self._current)
+        if cur_base in images:
+            images.remove(cur_base)
+            images.insert(0, cur_base)
+        self._pending = images
 
-    def _on_key(self, _widget, event):
+        # Load the very first item synchronously to immediately select it
+        if self._pending:
+            self._load_next()
+            first = self._active_child or self.flowbox.get_child_at_index(0)
+            if first:
+                self.flowbox.select_child(first)
+                GLib.idle_add(first.grab_focus)
+
+        if self._pending:
+            GLib.idle_add(self._load_next)
+
+    def _load_next(self):
+        if not self._pending:
+            return False
+        fname = self._pending.pop(0)
+        path = os.path.join(WALL_DIR, fname)
+        try: pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(path, THUMB_W, THUMB_H, True)
+        except: return True
+        card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        card.get_style_context().add_class("card")
+        card.pack_start(Gtk.Image.new_from_pixbuf(pixbuf), False, False, 0)
+        display_name = os.path.splitext(fname)[0].replace("-", " ").replace("_", " ")[:20]
+        card.pack_start(Gtk.Label(label=display_name), False, False, 0)
+        child = Gtk.FlowBoxChild()
+        child.set_halign(Gtk.Align.CENTER)
+        child.set_valign(Gtk.Align.START)
+        child.add(card)
+        self.flowbox.add(child)
+        child.show_all()
+        self.paths[child], self.names[child] = path, display_name.lower()
+        if os.path.abspath(path) == os.path.abspath(self._current):
+            self._active_child = child
+            child.get_style_context().add_class("active")
+        return True
+
+    def _on_search_changed(self, _entry):
+        self.flowbox.invalidate_filter()
+
+    def _filter_func(self, child):
+        query = self.search_entry.get_text().lower()
+        return not query or query in self.names.get(child, "")
+
+    def _on_sort_changed(self, combo): self._load_images(combo.get_active_text())
+
+    def _on_pick(self, _fb, child):
+        path = self.paths.get(child)
+        if not path: return
+        set_wallpaper(path)
+        if self._active_child: self._active_child.get_style_context().remove_class("active")
+        self._active_child = child
+        child.get_style_context().add_class("active")
+        self._current = path
+
+    def _on_search_key(self, _entry, event):
+        if event.keyval == Gdk.KEY_Down:
+            visible = [c for c in self.flowbox.get_children() if c.is_visible() and self._filter_func(c)]
+            if visible:
+                visible[0].grab_focus()
+                self.flowbox.select_child(visible[0])
+            return True
+        return False
+
+    def _on_key(self, _w, event):
         if event.keyval == Gdk.KEY_Escape:
             self.destroy()
-        elif event.keyval == Gdk.KEY_Return:
-            selected = self.flowbox.get_selected_children()
-            if selected:
-                self._on_pick(self.flowbox, selected[0])
+            return True
 
+        # Auto-focus search entry on character input
+        if not self.search_entry.has_focus() and not self.sort_combo.has_focus():
+            if 0x20 <= event.keyval <= 0x7E:
+                self.search_entry.grab_focus()
+                self.search_entry.set_text(self.search_entry.get_text() + chr(event.keyval))
+                self.search_entry.set_position(-1)
+                return True
+            elif event.keyval == Gdk.KEY_BackSpace:
+                self.search_entry.grab_focus()
+                return True
+
+        if event.keyval == Gdk.KEY_Return:
+            if self.search_entry.has_focus():
+                visible = [c for c in self.flowbox.get_children() if c.is_visible() and self._filter_func(c)]
+                if visible:
+                    self._on_pick(self.flowbox, visible[0])
+                return True
+        elif event.keyval == Gdk.KEY_Up:
+            # If focus is in flowbox and on the first visible row, return focus to search entry
+            focus_child = self.get_focus()
+            if focus_child and focus_child in self.flowbox.get_children():
+                visible = [c for c in self.flowbox.get_children() if c.is_visible() and self._filter_func(c)]
+                try:
+                    if visible.index(focus_child) < COLS:
+                        self.search_entry.grab_focus()
+                        self.search_entry.set_position(-1)
+                        return True
+                except ValueError:
+                    pass
+        return False
 
 if __name__ == "__main__":
+    _lock = acquire_lock()
+    if not _lock: sys.exit(0)
     app = WallpaperPicker()
     app.connect("destroy", Gtk.main_quit)
     Gtk.main()
