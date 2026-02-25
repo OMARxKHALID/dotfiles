@@ -64,8 +64,12 @@ if command -v rg &> /dev/null; then
     export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
 fi
 
-# Persistent FZF search history
-export FZF_DEFAULT_OPTS="${FZF_DEFAULT_OPTS} --history=${XDG_STATE_HOME:-$HOME/.local/state}/fzf/history"
+# FZF appearance (Gruvbox)
+export FZF_DEFAULT_OPTS="${FZF_DEFAULT_OPTS} \
+  --history=${XDG_STATE_HOME:-$HOME/.local/state}/fzf/history \
+  --color=bg+:#3c3836,bg:#282828,spinner:#fb4934,hl:#928374 \
+  --color=fg:#ebdbb2,header:#928374,info:#8ec07c,pointer:#fb4934 \
+  --color=marker:#fb4934,fg+:#ebdbb2,prompt:#fb4934,hl+:#fb4934"
 
 # Zoxide integration
 if command -v zoxide &> /dev/null; then

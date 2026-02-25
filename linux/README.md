@@ -4,16 +4,20 @@ Zsh + Bash shell config with Powerlevel10k, zinit, and fzf.
 
 ## What's Here
 
-| File                                 | What it does                                                 |
-| ------------------------------------ | ------------------------------------------------------------ |
-| `.zshenv`                            | Bootstrap — sets ZDOTDIR, sources the real config            |
-| `.profile`                           | Login environment for Bash and display manager (XDG, EDITOR) |
-| `.bashrc`                            | Bash interactive config (history, prompt, completion)        |
-| `.config/aliasrc`                    | Shared aliases used by both Bash and Zsh                     |
-| `.config/zsh/.zshenv`                | Zsh environment (XDG dirs, PATH, defaults)                   |
-| `.config/zsh/.zshrc`                 | Zsh interactive (zinit plugins, completion, history, fzf)    |
-| `.config/zsh/.p10k.zsh`              | Powerlevel10k prompt theme                                   |
-| `.config/terminal/tcs-gruvbox.dconf` | Gruvbox color scheme for GNOME Terminal                      |
+| File                                                         | What it does                                                 |
+| ------------------------------------------------------------ | ------------------------------------------------------------ |
+| `.zshenv`                                                    | Bootstrap — sets ZDOTDIR, sources the real config            |
+| `.profile`                                                   | Login environment for Bash and display manager (XDG, EDITOR) |
+| `.bashrc`                                                    | Bash interactive config (history, prompt, completion)        |
+| `.config/aliasrc`                                            | Shared aliases used by both Bash and Zsh                     |
+| `.local/bin/switch-wallpaper`                                | Random wallpaper switcher (Alt+W)                            |
+| `.local/bin/wallpaper-picker`                                | Visual wallpaper picker with thumbnails (Alt+P)              |
+| `.local/share/gnome-shell/extensions/wallpaper-picker@omar/` | Top-bar wallpaper picker extension                           |
+| `.config/zsh/.zshenv`                                        | Zsh environment (XDG dirs, PATH, defaults)                   |
+| `.config/zsh/.zshrc`                                         | Zsh interactive (zinit plugins, completion, history, fzf)    |
+| `.config/zsh/.p10k.zsh`                                      | Powerlevel10k prompt theme                                   |
+| `.config/kitty/kitty.conf`                                   | Kitty terminal config (Gruvbox Dark theme)                   |
+| `.config/terminal/tcs-gruvbox.dconf`                         | Gruvbox color scheme for GNOME Terminal                      |
 
 ## How Shell Startup Works
 
@@ -34,8 +38,14 @@ Both:  → ~/.config/aliasrc (shared aliases)
 cp linux/.zshenv ~/
 cp linux/.profile ~/
 cp linux/.bashrc ~/
+cp linux/.local/bin/switch-wallpaper ~/.local/bin/
+cp linux/.local/bin/wallpaper-picker ~/.local/bin/
+chmod +x ~/.local/bin/switch-wallpaper ~/.local/bin/wallpaper-picker
+cp -r linux/.local/share/gnome-shell/extensions/wallpaper-picker@omar \
+  ~/.local/share/gnome-shell/extensions/
 cp -r linux/.config/zsh ~/.config/
 cp linux/.config/aliasrc ~/.config/
+cp -r linux/.config/kitty ~/.config/
 cp -r linux/.config/terminal ~/.config/
 ```
 

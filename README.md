@@ -14,10 +14,18 @@ My development environment configs for Windows and Linux.
     ├── .zshenv       # Bootstrap (sets ZDOTDIR)
     ├── .profile      # Login env for Bash/GDM
     ├── .bashrc       # Bash interactive config
+    ├── .local/
+    │   ├── bin/
+    │   │   ├── switch-wallpaper   # Random wallpaper switcher
+    │   │   └── wallpaper-picker   # Visual wallpaper picker (GTK)
+    │   └── share/gnome-shell/extensions/
+    │       └── wallpaper-picker@omar/  # Top-bar extension
     └── .config/
         ├── aliasrc   # Shared aliases (Bash + Zsh)
+        ├── kitty/
+        │   └── kitty.conf         # Kitty terminal (Gruvbox)
         ├── terminal/
-        │   └── tcs-gruvbox.dconf  # Gruvbox terminal theme
+        │   └── tcs-gruvbox.dconf  # Gruvbox GNOME Terminal theme
         └── zsh/
             ├── .zshenv   # Zsh environment (XDG, PATH)
             ├── .zshrc    # Zsh interactive (plugins, prompt)

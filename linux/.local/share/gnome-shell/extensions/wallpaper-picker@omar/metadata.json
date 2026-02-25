@@ -1,0 +1,8 @@
+{
+  "name": "Wallpaper Picker",
+  "description": "Opens a wallpaper picker from the top bar",
+  "uuid": "wallpaper-picker@omar",
+  "shell-version": ["46"],
+  "version": 1,
+  "url": ""
+}

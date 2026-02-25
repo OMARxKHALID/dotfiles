@@ -60,3 +60,7 @@ alias mv='mv -i'
 alias stc='dconf dump /org/gnome/terminal/legacy/profiles:/:b1dcc9dd-5262-4d8d-a863-c897e6d979b9/ > "$XDG_CONFIG_HOME/terminal/tcs-gruvbox.dconf"'
 alias ltc='dconf load /org/gnome/terminal/legacy/profiles:/:b1dcc9dd-5262-4d8d-a863-c897e6d979b9/ < "$XDG_CONFIG_HOME/terminal/tcs-gruvbox.dconf"'
 alias etc='${EDITOR:-nano} "$XDG_CONFIG_HOME/terminal/tcs-gruvbox.dconf"'
+
+# Kitty
+alias kittyconf='${EDITOR:-nano} "$XDG_CONFIG_HOME/kitty/kitty.conf"'
+alias reloadkitty='kill -SIGUSR1 $KITTY_PID'

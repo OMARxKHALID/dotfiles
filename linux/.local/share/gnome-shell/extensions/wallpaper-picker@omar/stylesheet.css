@@ -1,0 +1,38 @@
+/* Row of thumbnails */
+.wallpaper-row {
+  padding: 2px 6px;
+}
+
+/* Thumbnail button (default) */
+.wallpaper-thumb {
+  padding: 3px;
+  margin: 4px;
+  border-radius: 6px;
+  border: 2px solid rgba(255, 255, 255, 0.08);
+  background-color: rgba(255, 255, 255, 0.04);
+  transition-duration: 150ms;
+}
+
+.wallpaper-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.12);
+  border-color: #83a598;
+}
+
+/* Focus style - teal, distinct from active */
+.wallpaper-thumb:focus {
+  border-color: #83a598;
+}
+
+/* Active wallpaper - yellow, always visible */
+.wallpaper-thumb.active {
+  border-color: #d79921;
+  background-color: rgba(215, 153, 33, 0.18);
+}
+
+.wallpaper-thumb.active:hover {
+  border-color: #fabd2f;
+}
+
+.wallpaper-thumb StIcon {
+  border-radius: 4px;
+}

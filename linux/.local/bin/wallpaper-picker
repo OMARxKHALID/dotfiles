@@ -1,0 +1,147 @@
+#!/usr/bin/env python3
+"""Wallpaper Picker — Gruvbox-themed thumbnail grid for selecting wallpapers."""
+
+import os
+import subprocess
+
+import gi
+gi.require_version("Gtk", "3.0")
+gi.require_version("Gdk", "3.0")
+gi.require_version("GdkPixbuf", "2.0")
+from gi.repository import Gdk, GdkPixbuf, GLib, Gtk
+
+# ── Config ──────────────────────────────────────────────────────────────────
+WALL_DIR = os.path.expanduser("~/Pictures/Wallpapers/fav")
+THUMB_W = 220
+THUMB_H = 124
+COLS = 3
+IMAGE_EXTS = (".jpg", ".jpeg", ".png", ".webp", ".bmp")
+
+# ── Gruvbox CSS ─────────────────────────────────────────────────────────────
+CSS = b"""
+window              { background-color: #282828; }
+flowboxchild        { padding: 0; margin: 4px; border-radius: 6px;
+                      border: 3px solid #3c3836; }
+flowboxchild:selected { background-color: transparent; border-color: #d79921; }
+flowboxchild:hover  { border-color: #83a598; }
+.card               { background-color: #3c3836; padding: 4px; }
+label               { color: #ebdbb2; font-size: 10px; padding: 2px; }
+.header             { font-size: 12px; font-weight: bold;
+                      color: #d79921; padding: 8px; }
+"""
+
+
+# ── Helpers ─────────────────────────────────────────────────────────────────
+def get_current_wallpaper():
+    """Return the filesystem path of the current wallpaper."""
+    try:
+        out = subprocess.run(
+            ["gsettings", "get", "org.gnome.desktop.background", "picture-uri-dark"],
+            capture_output=True, text=True,
+        ).stdout.strip().strip("'")
+        return out.replace("file://", "")
+    except Exception:
+        return ""
+
+
+def set_wallpaper(path):
+    """Set both light and dark wallpaper URIs."""
+    uri = f"file://{path}"
+    for key in ("picture-uri", "picture-uri-dark"):
+        subprocess.run(["gsettings", "set", "org.gnome.desktop.background", key, uri])
+
+
+def get_images():
+    """Return sorted list of image filenames in WALL_DIR."""
+    if not os.path.isdir(WALL_DIR):
+        return []
+    return sorted(f for f in os.listdir(WALL_DIR) if f.lower().endswith(IMAGE_EXTS))
+
+
+# ── Application ─────────────────────────────────────────────────────────────
+class WallpaperPicker(Gtk.Window):
+    def __init__(self):
+        super().__init__(title="Wallpaper Picker")
+        self.set_resizable(False)
+        self.set_keep_above(True)
+        self.set_skip_taskbar_hint(True)
+
+        Gtk.Settings.get_default().set_property("gtk-application-prefer-dark-theme", True)
+
+        css = Gtk.CssProvider()
+        css.load_from_data(CSS)
+        Gtk.StyleContext.add_provider_for_screen(
+            Gdk.Screen.get_default(), css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION,
+        )
+
+        # Layout
+        vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        self.add(vbox)
+
+        header = Gtk.Label(label="↑↓←→ Navigate  ·  Enter Select  ·  Esc Close")
+        header.get_style_context().add_class("header")
+        vbox.pack_start(header, False, False, 0)
+
+        self.flowbox = Gtk.FlowBox()
+        self.flowbox.set_valign(Gtk.Align.START)
+        self.flowbox.set_max_children_per_line(COLS)
+        self.flowbox.set_min_children_per_line(COLS)
+        self.flowbox.set_selection_mode(Gtk.SelectionMode.SINGLE)
+        self.flowbox.set_activate_on_single_click(True)
+        vbox.pack_start(self.flowbox, True, True, 0)
+
+        # Populate thumbnails
+        self.paths = {}
+        for filename in get_images():
+            path = os.path.join(WALL_DIR, filename)
+
+            try:
+                pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(path, THUMB_W, THUMB_H, True)
+            except GLib.Error:
+                continue
+
+            card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+            card.get_style_context().add_class("card")
+            card.pack_start(Gtk.Image.new_from_pixbuf(pixbuf), False, False, 0)
+
+            name = os.path.splitext(filename)[0].replace("-", " ").replace("_", " ")[:20]
+            card.pack_start(Gtk.Label(label=name), False, False, 0)
+
+            child = Gtk.FlowBoxChild()
+            child.add(card)
+            self.flowbox.add(child)
+            self.paths[child] = path
+
+        # Signals
+        self.flowbox.connect("child-activated", self._on_pick)
+        self.connect("key-press-event", self._on_key)
+
+        # Show & position near top of screen
+        self.show_all()
+        screen_w = self.get_screen().get_width()
+        win_w = self.get_allocated_width()
+        self.move((screen_w - win_w) // 2, 50)
+
+        # Highlight current wallpaper (deferred so FlowBox doesn't override)
+        current = get_current_wallpaper()
+        for child, path in self.paths.items():
+            if os.path.abspath(path) == os.path.abspath(current):
+                GLib.idle_add(self.flowbox.select_child, child)
+                break
+
+    def _on_pick(self, _flowbox, child):
+        set_wallpaper(self.paths[child])
+
+    def _on_key(self, _widget, event):
+        if event.keyval == Gdk.KEY_Escape:
+            self.destroy()
+        elif event.keyval == Gdk.KEY_Return:
+            selected = self.flowbox.get_selected_children()
+            if selected:
+                self._on_pick(self.flowbox, selected[0])
+
+
+if __name__ == "__main__":
+    app = WallpaperPicker()
+    app.connect("destroy", Gtk.main_quit)
+    Gtk.main()

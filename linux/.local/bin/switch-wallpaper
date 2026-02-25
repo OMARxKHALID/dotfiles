@@ -1,0 +1,21 @@
+#!/bin/bash
+
+# Folder where wallpapers are stored
+WALL_DIR="$HOME/Pictures/Wallpapers/fav"
+LAST_FILE="${XDG_STATE_HOME:-$HOME/.local/state}/wallpaper/last"
+mkdir -p "${LAST_FILE%/*}"
+
+# Pick a random wallpaper (skip the last one)
+LAST=$(cat "$LAST_FILE" 2>/dev/null)
+FILE=$(find "$WALL_DIR" -type f ! -path "$LAST" | shuf -n1)
+[ -z "$FILE" ] && FILE=$(find "$WALL_DIR" -type f | shuf -n1)
+echo "$FILE" > "$LAST_FILE"
+
+# Set GNOME wallpaper (light + dark)
+gsettings set org.gnome.desktop.background picture-uri "file://$FILE"
+gsettings set org.gnome.desktop.background picture-uri-dark "file://$FILE"
+
+# Apply pywal16 colors
+# wal -i "$FILE" -n
+
+echo "Wallpaper and pywal16 colors applied!"
