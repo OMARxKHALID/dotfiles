@@ -67,3 +67,32 @@ alias etc='${EDITOR:-nano} "$XDG_CONFIG_HOME/terminal/tcs-gruvbox.dconf"'
 alias kittyconf='${EDITOR:-nano} "$XDG_CONFIG_HOME/kitty/kitty.conf"'
 alias reloadkitty='kill -SIGUSR1 $KITTY_PID'
 alias img='kitty +kitten icat'
+
+# Package management
+alias s='apt search'
+alias i='sudo apt install'
+alias u='sudo apt update && sudo apt upgrade -y'
+alias r='sudo apt remove --purge'
+alias ar='sudo apt autoremove'
+
+# Flatpak management
+alias fs='flatpak search'
+alias fi='flatpak install'
+alias fu='flatpak update'
+alias fr='flatpak uninstall'
+alias far='flatpak uninstall --unused'
+
+# Git shortcuts
+alias g='git'
+alias ga='git add'
+alias gc='git commit -m'
+alias gp='git push'
+alias gl='git pull'
+alias gst='git status'
+alias gd='git diff'
+
+# System utilities
+alias df='df -h'     # Human-readable disk usage
+alias free='free -m' # Memory in MB
+alias ports='netstat -tulanp'
+alias myip='curl -s https://ifconfig.me && echo'
