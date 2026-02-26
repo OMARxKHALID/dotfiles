@@ -22,10 +22,12 @@ My development environment configs for Windows and Linux.
     │       └── wallpaper-picker@omar/  # Top-bar extension
     └── .config/
         ├── aliasrc   # Shared aliases (Bash + Zsh)
+        ├── bat/
+        │   └── config             # Bat configuration
         ├── kitty/
-        │   └── kitty.conf         # Kitty terminal (Gruvbox)
+        │   └── kitty.conf         # Kitty terminal configuration
         ├── terminal/
-        │   └── tcs-gruvbox.dconf  # Gruvbox GNOME Terminal theme
+        │   └── tcs-gruvbox.dconf  # GNOME Terminal color scheme
         └── zsh/
             ├── .zshenv   # Zsh environment (XDG, PATH)
             ├── .zshrc    # Zsh interactive (plugins, prompt)

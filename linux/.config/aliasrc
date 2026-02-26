@@ -44,9 +44,11 @@ function clear-history {
 
 # Bat (Alternative cat)
 if command -v batcat &> /dev/null; then
+    alias bat='batcat'
     alias cat='batcat'
     alias catp='batcat -p'
 elif command -v bat &> /dev/null; then
+    alias bat='bat'
     alias cat='bat'
     alias catp='bat -p'
 fi
@@ -64,3 +66,4 @@ alias etc='${EDITOR:-nano} "$XDG_CONFIG_HOME/terminal/tcs-gruvbox.dconf"'
 # Kitty
 alias kittyconf='${EDITOR:-nano} "$XDG_CONFIG_HOME/kitty/kitty.conf"'
 alias reloadkitty='kill -SIGUSR1 $KITTY_PID'
+alias img='kitty +kitten icat'

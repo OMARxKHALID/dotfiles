@@ -3,8 +3,11 @@
 import fcntl
 import json
 import os
+import random
+import subprocess
 import sys
 import threading
+import time
 from urllib.parse import unquote, urlparse
 
 import gi
@@ -12,24 +15,44 @@ import gi
 gi.require_version("Gtk", "3.0")
 gi.require_version("Gdk", "3.0")
 gi.require_version("GdkPixbuf", "2.0")
-from gi.repository import Gdk, GdkPixbuf, Gio, GLib, Gtk
+from gi.repository import Gdk, GdkPixbuf, Gio, GLib, Gtk, Pango
 
-WALL_DIR    = os.path.expanduser("~/Pictures/Wallpapers/fav")
+# ---------------------------------------------------------------------------
+# Constants
+# ---------------------------------------------------------------------------
+
+DEFAULT_WALL_DIRS = [os.path.expanduser("~/Pictures/Wallpapers")]
 THUMB_W     = 160
 THUMB_H     = 90
 COLS        = 3
 IMAGE_EXTS  = (".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tiff", ".tif", ".avif")
 DATA_DIR    = os.path.expanduser("~/.local/share/wallpaper-picker")
 STATS_FILE  = os.path.join(DATA_DIR, "stats.json")
+CONFIG_FILE = os.path.join(DATA_DIR, "config.json")
 RUNTIME_DIR = os.environ.get("XDG_RUNTIME_DIR") or os.path.expanduser("~/.cache")
 LOCK_FILE   = os.path.join(RUNTIME_DIR, "wallpaper-picker.lock")
 WIN_WIDTH   = 600
-SCROLL_H    = 440
+SCROLL_H    = 420
 SEARCH_DEBOUNCE_MS = 150
 
-CSS = b"""
+PICTURE_MODES = {
+    "Zoom":    "zoom",
+    "Stretch": "stretched",
+    "Center":  "centered",
+    "Tile":    "wallpaper",
+    "Span":    "spanned",
+}
+PICTURE_MODE_LABELS = list(PICTURE_MODES.keys())
+
+_stats_lock = threading.Lock()
+
+# ---------------------------------------------------------------------------
+# CSS
+# ---------------------------------------------------------------------------
+
+CSS = """
 window { background-color: #282828; border-radius: 12px; }
-flowbox { margin: 10px; }
+flowbox { margin: 10px 10px 10px 9px; }
 
 flowboxchild {
     padding: 0;
@@ -38,7 +61,7 @@ flowboxchild {
     border: 3px solid #3c3836;
     background-color: transparent;
 }
-flowboxchild:selected { background-color: transparent; border-color: #d79921; outline: none; }
+flowboxchild:selected { background-color: transparent; border-color: #83a598; outline: none; }
 flowboxchild:focus    { outline: none; border-color: #83a598; }
 flowboxchild:hover    { border-color: #83a598; }
 
@@ -50,44 +73,145 @@ flowboxchild.active:selected {
 flowboxchild.active:focus,
 flowboxchild.active:hover {
     border-color: #83a598;
-    border-style: dashed;
     background-color: rgba(250, 189, 47, 0.1);
 }
 
 .card       { background-color: #3c3836; padding: 4px; border-radius: 6px; }
 .card label { color: #ebdbb2; font-size: 9px; padding: 2px; }
-.header  { font-size: 13px; font-weight: bold; color: #fabd2f; padding: 10px 14px 6px 14px; }
-.empty   { color: #665c54; font-size: 11px; padding: 40px; }
+
+.header { font-size: 13px; font-weight: bold; color: #fabd2f;
+          padding: 10px 14px 6px 14px; }
+
+.icon-btn {
+    background-color: transparent;
+    color: #a89984;
+    border: 1px solid #504945;
+    border-radius: 6px;
+    font-size: 12px;
+    min-height: 24px;
+    min-width: 28px;
+    padding: 0 6px;
+    box-shadow: none;
+}
+.icon-btn:hover { border-color: #83a598; color: #83a598; }
+
+.shuffle-btn {
+    background-color: #3c3836;
+    color: #ebdbb2;
+    border: 1px solid #504945;
+    border-radius: 6px;
+    font-size: 11px;
+    min-height: 24px;
+    padding: 0 8px;
+    margin-right: 6px;
+    box-shadow: none;
+}
+.shuffle-btn:hover { border-color: #83a598; color: #83a598; }
 
 entry {
     background-color: #1d2021;
     color: #ebdbb2;
-    border: 1px solid #3c3836;
+    border: 1px solid #504945;
     border-radius: 6px;
     font-size: 10px;
     min-height: 24px;
     padding: 0 8px;
-    margin-left: 14px;
 }
 entry:focus { border-color: #83a598; }
 
-combobox              { margin-right: 14px; margin-left: 6px; }
-combobox button       {
+combobox button {
     background-color: #1d2021;
     color: #ebdbb2;
-    border: 1px solid #3c3836;
+    border: 1px solid #504945;
     border-radius: 6px;
     font-size: 10px;
     min-height: 24px;
     box-shadow: none;
 }
 combobox button:hover { border-color: #83a598; }
+
+spinbutton {
+    background-color: #1d2021;
+    color: #ebdbb2;
+    border: 1px solid #504945;
+    border-radius: 6px;
+    font-size: 10px;
+    min-height: 24px;
+}
+spinbutton button {
+    background-color: #3c3836;
+    color: #a89984;
+    border: none;
+    box-shadow: none;
+    min-width: 20px;
+}
+spinbutton button:hover { color: #83a598; }
+
+.empty { color: #665c54; font-size: 11px; padding: 40px; }
+
+/* ── Settings page ─────────────────────────────────────────── */
+.settings-section-label {
+    color: #fabd2f;
+    font-size: 10px;
+    font-weight: bold;
+    padding: 12px 16px 4px 16px;
+}
+.settings-row {
+    padding: 4px 16px;
+}
+.settings-hint {
+    color: #665c54;
+    font-size: 9px;
+    padding: 0 16px 4px 16px;
+}
+.dir-row {
+    background-color: #3c3836;
+    border-radius: 6px;
+    padding: 4px 8px;
+    margin: 2px 16px;
+}
+.dir-row-label {
+    color: #ebdbb2;
+    font-size: 10px;
+}
+.dir-remove-btn {
+    background-color: transparent;
+    color: #665c54;
+    border: none;
+    font-size: 13px;
+    min-width: 24px;
+    min-height: 24px;
+    padding: 0;
+    box-shadow: none;
+}
+.dir-remove-btn:hover { color: #fb4934; }
+.add-dir-btn {
+    background-color: transparent;
+    color: #83a598;
+    border: 1px dashed #504945;
+    border-radius: 6px;
+    font-size: 10px;
+    min-height: 28px;
+    padding: 0 12px;
+    margin: 4px 16px;
+    box-shadow: none;
+}
+.add-dir-btn:hover { border-color: #83a598; }
+.settings-label {
+    color: #a89984;
+    font-size: 10px;
+}
+.separator-line {
+    background-color: #3c3836;
+    min-height: 1px;
+    margin: 8px 16px;
+}
 """
 
 # ---------------------------------------------------------------------------
-# GSettings — optional. On non-GNOME desktops the schema may not be installed.
-# All wallpaper get/set functions guard against _bg_settings being None.
+# GSettings
 # ---------------------------------------------------------------------------
+
 try:
     _bg_settings = Gio.Settings.new("org.gnome.desktop.background")
 except Exception:
@@ -98,68 +222,143 @@ def get_current_wallpaper():
     if _bg_settings is None:
         return ""
     try:
-        uri = _bg_settings.get_string("picture-uri-dark") or _bg_settings.get_string("picture-uri")
+        uri = (_bg_settings.get_string("picture-uri-dark")
+               or _bg_settings.get_string("picture-uri"))
         if not uri:
             return ""
-        # Use urlparse to safely strip the scheme regardless of slash count.
-        parsed = urlparse(uri)
-        return os.path.abspath(unquote(parsed.path))
+        return os.path.abspath(unquote(urlparse(uri).path))
     except Exception:
         return ""
 
 
-def set_wallpaper(path):
+def set_wallpaper(path, mode="zoom"):
     if _bg_settings is None:
         return
     if not os.path.isfile(path):
         return
     try:
-        uri = f"file://{path}"
+        uri = GLib.filename_to_uri(path)
         _bg_settings.set_string("picture-uri", uri)
         _bg_settings.set_string("picture-uri-dark", uri)
+        _bg_settings.set_string("picture-options", mode)
     except Exception:
         pass
     _record_use(path)
 
 
-def _record_use(path):
-    stats = _load_stats()
-    fname = os.path.basename(path)
-    stats[fname] = stats.get(fname, 0) + 1
-    def _write(s):
-        try:
-            os.makedirs(DATA_DIR, exist_ok=True)
-            with open(STATS_FILE, "w") as f:
-                json.dump(s, f)
-        except OSError:
-            pass
-    t = threading.Thread(target=_write, args=(stats,), daemon=True)
-    t.start()
+# ---------------------------------------------------------------------------
+# Stats — {fname: {"count": N, "last_used": float}}
+# ---------------------------------------------------------------------------
+
+def _normalise_stats(raw):
+    out = {}
+    for k, v in raw.items():
+        if isinstance(v, dict):
+            out[k] = {"count": v.get("count", 0), "last_used": v.get("last_used", 0.0)}
+        else:
+            out[k] = {"count": int(v), "last_used": 0.0}
+    return out
 
 
 def _load_stats():
     try:
         with open(STATS_FILE, "r") as f:
-            return json.load(f)
+            return _normalise_stats(json.load(f))
     except (OSError, json.JSONDecodeError, ValueError):
         return {}
 
 
-def get_images(sort_mode="Most Used"):
-    if not os.path.isdir(WALL_DIR):
-        return []
+def _record_use(path):
+    fname = os.path.basename(path)
+    def _work():
+        with _stats_lock:
+            stats = _load_stats()
+            entry = stats.get(fname, {"count": 0, "last_used": 0.0})
+            entry["count"]    += 1
+            entry["last_used"] = time.time()
+            stats[fname] = entry
+            try:
+                os.makedirs(DATA_DIR, exist_ok=True)
+                with open(STATS_FILE, "w") as f:
+                    json.dump(stats, f)
+            except OSError:
+                pass
+    threading.Thread(target=_work, daemon=True).start()
+
+
+# ---------------------------------------------------------------------------
+# Config — {wall_dirs: [...], max_images: int, picture_mode: str}
+# ---------------------------------------------------------------------------
+
+def _load_config():
     try:
-        files = [f for f in os.listdir(WALL_DIR) if f.lower().endswith(IMAGE_EXTS)]
+        with open(CONFIG_FILE, "r") as f:
+            raw = json.load(f)
+        # Migrate old single wall_dir key
+        if "wall_dir" in raw and "wall_dirs" not in raw:
+            raw["wall_dirs"] = [raw.pop("wall_dir")]
+        return raw
+    except (OSError, json.JSONDecodeError, ValueError):
+        return {}
+
+
+def _save_config(config):
+    try:
+        os.makedirs(DATA_DIR, exist_ok=True)
+        with open(CONFIG_FILE, "w") as f:
+            json.dump(config, f, indent=2)
     except OSError:
-        return []
+        pass
+
+
+# ---------------------------------------------------------------------------
+# Image helpers — return full absolute paths, deduped by basename
+# ---------------------------------------------------------------------------
+
+def get_images(wall_dirs, sort_mode="Most Used", max_images=0):
+    """Scan wall_dirs, return list of full absolute paths.
+
+    Deduplication: first occurrence of a basename wins (preserves sort
+    intent when same filename appears in multiple dirs).
+    Truncation: if max_images > 0, result is capped after sorting.
+    """
+    all_paths = []
+    seen_names = set()
+    for d in wall_dirs:
+        if not os.path.isdir(d):
+            continue
+        try:
+            for fname in os.listdir(d):
+                if not fname.lower().endswith(IMAGE_EXTS):
+                    continue
+                if fname in seen_names:
+                    continue          # duplicate basename — skip
+                seen_names.add(fname)
+                all_paths.append(os.path.join(d, fname))
+        except OSError:
+            continue
+
     if sort_mode == "Newest":
-        files.sort(key=lambda f: _safe_mtime(os.path.join(WALL_DIR, f)), reverse=True)
+        all_paths.sort(key=_safe_mtime, reverse=True)
     elif sort_mode == "Most Used":
         stats = _load_stats()
-        files.sort(key=lambda f: stats.get(f, 0), reverse=True)
+        all_paths.sort(
+            key=lambda p: stats.get(os.path.basename(p), {}).get("count", 0),
+            reverse=True,
+        )
+    elif sort_mode == "Recent":
+        stats = _load_stats()
+        all_paths.sort(
+            key=lambda p: stats.get(os.path.basename(p), {}).get("last_used", 0.0),
+            reverse=True,
+        )
     else:
-        files.sort()
-    return files
+        all_paths.sort(key=lambda p: os.path.basename(p).lower())
+
+    if max_images > 0:
+        all_paths = all_paths[:max_images]
+
+    return all_paths
 
 
 def _safe_mtime(path):
@@ -172,8 +371,15 @@ def _safe_mtime(path):
 def _make_display_name(fname, max_len=20):
     name = os.path.splitext(fname)[0].replace("-", " ").replace("_", " ").strip()
     if len(name) > max_len:
-        name = name[:max_len].rstrip() + "…"
+        name = name[:max_len].rstrip() + "\u2026"
     return name
+
+
+def _shorten_path(path):
+    home = os.path.expanduser("~")
+    if path == home or path.startswith(home + os.sep):
+        return "~" + path[len(home):]
+    return path
 
 
 def acquire_lock():
@@ -187,10 +393,11 @@ def acquire_lock():
 
 
 # ---------------------------------------------------------------------------
-# UI
+# Main window
 # ---------------------------------------------------------------------------
 
 class WallpaperPicker(Gtk.Window):
+
     def __init__(self):
         super().__init__(title="Wallpaper Picker")
         self.set_resizable(False)
@@ -199,30 +406,36 @@ class WallpaperPicker(Gtk.Window):
         self.set_decorated(False)
         self.set_size_request(WIN_WIDTH, -1)
 
+        # CSS
         provider = Gtk.CssProvider()
-        provider.load_from_data(CSS)
+        provider.load_from_data(CSS.encode())
         Gtk.StyleContext.add_provider_for_screen(
-            Gdk.Screen.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+            Gdk.Screen.get_default(), provider,
+            Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION,
         )
 
-        # Enable RGBA visual so the compositor can clip rounded corners.
-        # Do NOT set app_paintable — GTK must still draw the solid CSS background.
+        # RGBA visual for rounded corners
         screen = Gdk.Screen.get_default()
         visual = screen.get_rgba_visual() if screen else None
         if visual:
             self.set_visual(visual)
 
-        self._active_child   = None
-        self._current        = get_current_wallpaper()
-        self._paths          = {}
-        self._names          = {}
-        self._pending        = []
-        self._load_idle_id   = None
-        self._search_tid     = None
-        self._did_select     = False
-        # Cached query string — updated once per debounce tick, read N times
-        # by _filter_func (once per child). This is the main search perf fix.
-        self._query_cache    = ""
+        # Load config
+        cfg = _load_config()
+        self._wall_dirs    = cfg.get("wall_dirs") or DEFAULT_WALL_DIRS
+        self._max_images   = int(cfg.get("max_images", 0))
+        self._picture_mode = cfg.get("picture_mode", "zoom")
+
+        # Runtime state
+        self._active_child  = None
+        self._current       = get_current_wallpaper()
+        self._paths         = {}   # FlowBoxChild → full path
+        self._names         = {}   # FlowBoxChild → display name (lower)
+        self._pending       = []   # list of full paths to load
+        self._load_idle_id  = None
+        self._search_tid    = None
+        self._did_select    = False
+        self._query_cache   = ""
 
         self._build_ui()
         self.connect("destroy", self._on_destroy)
@@ -231,53 +444,99 @@ class WallpaperPicker(Gtk.Window):
         self._load_images()
         self._center_on_screen()
 
+    # ------------------------------------------------------------------
+    # Cleanup
+    # ------------------------------------------------------------------
+
     def _on_destroy(self, _w):
-        if self._search_tid is not None:
-            try:
-                GLib.source_remove(self._search_tid)
-            except Exception:
-                pass
-            self._search_tid = None
-        if self._load_idle_id is not None:
-            try:
-                GLib.source_remove(self._load_idle_id)
-            except Exception:
-                pass
-            self._load_idle_id = None
+        for tid in (self._search_tid, self._load_idle_id):
+            if tid is not None:
+                try:
+                    GLib.source_remove(tid)
+                except Exception:
+                    pass
+        self._search_tid = self._load_idle_id = None
 
     # ------------------------------------------------------------------
-    # UI construction
+    # UI — top-level
     # ------------------------------------------------------------------
 
     def _build_ui(self):
-        vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        vbox.set_border_width(8)
-        self.add(vbox)
+        self._vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        self._vbox.set_border_width(8)
+        self.add(self._vbox)
 
-        header = Gtk.Label(label="Wallpaper Picker")
-        header.get_style_context().add_class("header")
-        header.set_xalign(0)
-        vbox.pack_start(header, False, False, 0)
+        self._build_header()
+        self._build_controls()
+        self._build_stack()
 
-        controls = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
-        vbox.pack_start(controls, False, False, 4)
+        self.connect("key-press-event", self._on_key)
 
-        self.search_entry = Gtk.SearchEntry(placeholder_text="Filter wallpapers...")
+    # ------------------------------------------------------------------
+    # Header row  (shared by both pages — title changes, buttons vary)
+    # ------------------------------------------------------------------
+
+    def _build_header(self):
+        self._header_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+
+        self._header_label = Gtk.Label(label="Wallpaper Picker")
+        self._header_label.get_style_context().add_class("header")
+        self._header_label.set_xalign(0)
+        header_eb = Gtk.EventBox()
+        header_eb.add(self._header_label)
+        header_eb.connect("button-press-event", self._on_header_drag)
+        self._header_row.pack_start(header_eb, True, True, 0)
+
+        # Shuffle — only visible on main page
+        self._shuffle_btn = Gtk.Button(label="\u21c4 Shuffle")
+        self._shuffle_btn.get_style_context().add_class("shuffle-btn")
+        self._shuffle_btn.set_tooltip_text("Apply a random wallpaper")
+        self._shuffle_btn.connect("clicked", self._on_shuffle)
+        self._shuffle_btn.set_valign(Gtk.Align.CENTER)
+        self._header_row.pack_end(self._shuffle_btn, False, False, 0)
+
+        # Settings gear
+        self._settings_btn = Gtk.Button(label="\u2699")
+        self._settings_btn.get_style_context().add_class("icon-btn")
+        self._settings_btn.set_tooltip_text("Settings")
+        self._settings_btn.connect("clicked", self._open_settings)
+        self._settings_btn.set_valign(Gtk.Align.CENTER)
+        self._header_row.pack_end(self._settings_btn, False, False, 4)
+
+        self._vbox.pack_start(self._header_row, False, False, 0)
+
+    # ------------------------------------------------------------------
+    # Controls row  (search + sort — main page only, hidden on settings)
+    # ------------------------------------------------------------------
+
+    def _build_controls(self):
+        self._controls = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+        self._controls.set_margin_start(14)
+        self._controls.set_margin_end(6)
+        self._controls.set_spacing(6)
+        self._vbox.pack_start(self._controls, False, False, 4)
+
+        self.search_entry = Gtk.SearchEntry(placeholder_text="Filter wallpapers…")
         self.search_entry.connect("search-changed", self._on_search_changed)
         self.search_entry.connect("key-press-event", self._on_search_key)
-        controls.pack_start(self.search_entry, True, True, 0)
+        self._controls.pack_start(self.search_entry, True, True, 0)
 
         self.sort_combo = Gtk.ComboBoxText()
-        for mode in ("A-Z", "Newest", "Most Used"):
-            self.sort_combo.append_text(mode)
+        for m in ("A-Z", "Newest", "Most Used", "Recent"):
+            self.sort_combo.append_text(m)
         self.sort_combo.set_active(2)
         self.sort_combo.connect("changed", self._on_sort_changed)
-        controls.pack_start(self.sort_combo, False, False, 0)
+        self._controls.pack_start(self.sort_combo, False, False, 0)
 
-        # Stack: flowbox + empty-state label share the same space.
+    # ------------------------------------------------------------------
+    # Stack  (main grid page, empty, no-results, settings)
+    # ------------------------------------------------------------------
+
+    def _build_stack(self):
         self.stack = Gtk.Stack()
         self.stack.set_transition_type(Gtk.StackTransitionType.NONE)
 
+        # ── grid page ─────────────────────────────────────────────────
         self.flowbox = Gtk.FlowBox()
         self.flowbox.set_valign(Gtk.Align.START)
         self.flowbox.set_halign(Gtk.Align.START)
@@ -299,63 +558,292 @@ class WallpaperPicker(Gtk.Window):
         scroll.add(self.flowbox)
         self.stack.add_named(scroll, "grid")
 
-        empty_label = Gtk.Label(label="No wallpapers found in\n" + WALL_DIR)
-        empty_label.get_style_context().add_class("empty")
-        empty_label.set_justify(Gtk.Justification.CENTER)
-        self.stack.add_named(empty_label, "empty")
+        # ── empty page ────────────────────────────────────────────────
+        empty_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        empty_box.set_valign(Gtk.Align.CENTER)
+        empty_box.set_halign(Gtk.Align.CENTER)
+        empty_box.set_size_request(-1, SCROLL_H)
 
-        no_results_label = Gtk.Label(label="No results match your search.")
-        no_results_label.get_style_context().add_class("empty")
-        self.stack.add_named(no_results_label, "no-results")
+        self._empty_icon = Gtk.Label()
+        self._empty_icon.set_markup('<span size="xx-large">\U0001f5bc</span>')
+        self._empty_icon.set_margin_bottom(10)
+        empty_box.pack_start(self._empty_icon, False, False, 0)
 
-        vbox.pack_start(self.stack, True, True, 0)
-        self.connect("key-press-event", self._on_key)
+        self._empty_label = Gtk.Label(label="No wallpapers found")
+        self._empty_label.get_style_context().add_class("empty")
+        self._empty_label.set_justify(Gtk.Justification.CENTER)
+        empty_box.pack_start(self._empty_label, False, False, 0)
 
-    def _center_on_screen(self):
+        empty_hint = Gtk.Label(label="Add folders in \u2699 Settings")
+        empty_hint.get_style_context().add_class("empty")
+        empty_box.pack_start(empty_hint, False, False, 0)
+
+        self.stack.add_named(empty_box, "empty")
+
+        # ── no-results page ───────────────────────────────────────────
+        no_results = Gtk.Label(label="No results match your search.")
+        no_results.get_style_context().add_class("empty")
+        no_results.set_size_request(-1, SCROLL_H)
+        self.stack.add_named(no_results, "no-results")
+
+        # ── settings page ─────────────────────────────────────────────
+        self.stack.add_named(self._build_settings_page(), "settings")
+
+        self._vbox.pack_start(self.stack, True, True, 0)
+
+    # ------------------------------------------------------------------
+    # Settings page
+    # ------------------------------------------------------------------
+
+    def _build_settings_page(self):
+        outer = Gtk.ScrolledWindow()
+        outer.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        outer.set_min_content_height(SCROLL_H)
+        outer.set_max_content_height(SCROLL_H)
+
+        page = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        outer.add(page)
+
+        # ── Wallpaper Folders ─────────────────────────────────────────
+        lbl_dirs = Gtk.Label(label="WALLPAPER FOLDERS")
+        lbl_dirs.get_style_context().add_class("settings-section-label")
+        lbl_dirs.set_xalign(0)
+        page.pack_start(lbl_dirs, False, False, 0)
+
+        hint_dirs = Gtk.Label(label="Images are pulled from all folders below.")
+        hint_dirs.get_style_context().add_class("settings-hint")
+        hint_dirs.set_xalign(0)
+        page.pack_start(hint_dirs, False, False, 0)
+
+        # Container that we rebuild whenever dirs change
+        self._dirs_container = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        page.pack_start(self._dirs_container, False, False, 0)
+        self._rebuild_dirs_ui()
+
+        add_btn = Gtk.Button(label="+ Add Folder")
+        add_btn.get_style_context().add_class("add-dir-btn")
+        add_btn.set_halign(Gtk.Align.START)
+        add_btn.connect("clicked", self._on_add_dir)
+        page.pack_start(add_btn, False, False, 4)
+
+        # ── separator ─────────────────────────────────────────────────
+        sep1 = Gtk.Box()
+        sep1.get_style_context().add_class("separator-line")
+        page.pack_start(sep1, False, False, 0)
+
+        # ── Display settings ──────────────────────────────────────────
+        lbl_display = Gtk.Label(label="DISPLAY")
+        lbl_display.get_style_context().add_class("settings-section-label")
+        lbl_display.set_xalign(0)
+        page.pack_start(lbl_display, False, False, 0)
+
+        # Max images row
+        max_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        max_row.get_style_context().add_class("settings-row")
+        lbl_max = Gtk.Label(label="Max images to show")
+        lbl_max.get_style_context().add_class("settings-label")
+        lbl_max.set_xalign(0)
+        max_row.pack_start(lbl_max, True, True, 0)
+
+        adj = Gtk.Adjustment(
+            value=self._max_images,
+            lower=0, upper=2000, step_increment=10, page_increment=100,
+        )
+        self._max_spin = Gtk.SpinButton(adjustment=adj, climb_rate=1, digits=0)
+        self._max_spin.set_width_chars(6)
+        self._max_spin.connect("value-changed", self._on_max_changed)
+        max_row.pack_end(self._max_spin, False, False, 0)
+        page.pack_start(max_row, False, False, 0)
+
+        hint_max = Gtk.Label(label="0 = show all images (no limit)")
+        hint_max.get_style_context().add_class("settings-hint")
+        hint_max.set_xalign(0)
+        page.pack_start(hint_max, False, False, 0)
+
+        # Display mode row
+        mode_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        mode_row.get_style_context().add_class("settings-row")
+        lbl_mode = Gtk.Label(label="Wallpaper display mode")
+        lbl_mode.get_style_context().add_class("settings-label")
+        lbl_mode.set_xalign(0)
+        mode_row.pack_start(lbl_mode, True, True, 0)
+
+        self._mode_combo = Gtk.ComboBoxText()
+        for m in PICTURE_MODE_LABELS:
+            self._mode_combo.append_text(m)
+        # Select current mode
         try:
-            display = Gdk.Display.get_default()
-            if display is None:
-                return
-            monitor = display.get_primary_monitor() or display.get_monitor(0)
-            if monitor is None:
-                return
-            geo = monitor.get_geometry()
-            self.move((geo.width - WIN_WIDTH) // 2, 50)
-        except Exception:
-            pass
+            rev = {v: k for k, v in PICTURE_MODES.items()}
+            idx = PICTURE_MODE_LABELS.index(rev.get(self._picture_mode, "Zoom"))
+        except ValueError:
+            idx = 0
+        self._mode_combo.set_active(idx)
+        self._mode_combo.connect("changed", self._on_mode_changed)
+        mode_row.pack_end(self._mode_combo, False, False, 0)
+        page.pack_start(mode_row, False, False, 4)
+
+        # ── separator ─────────────────────────────────────────────────
+        sep2 = Gtk.Box()
+        sep2.get_style_context().add_class("separator-line")
+        page.pack_start(sep2, False, False, 0)
+
+        return outer
+
+    def _rebuild_dirs_ui(self):
+        """Tear down and rebuild the folder rows from self._wall_dirs."""
+        for child in self._dirs_container.get_children():
+            self._dirs_container.remove(child)
+
+        for i, d in enumerate(self._wall_dirs):
+            row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+            row.get_style_context().add_class("dir-row")
+
+            lbl = Gtk.Label(label=_shorten_path(d))
+            lbl.get_style_context().add_class("dir-row-label")
+            lbl.set_xalign(0)
+            lbl.set_ellipsize(Pango.EllipsizeMode.MIDDLE)
+            row.pack_start(lbl, True, True, 0)
+
+            rm_btn = Gtk.Button(label="\u00d7")
+            rm_btn.get_style_context().add_class("dir-remove-btn")
+            rm_btn.set_valign(Gtk.Align.CENTER)
+            rm_btn.connect("clicked", self._on_remove_dir, i)
+            row.pack_end(rm_btn, False, False, 0)
+
+            self._dirs_container.pack_start(row, False, False, 0)
+
+        self._dirs_container.show_all()
+
+    # ------------------------------------------------------------------
+    # Settings actions
+    # ------------------------------------------------------------------
+
+    def _open_settings(self, _btn):
+        self._header_label.set_text("Settings")
+        self._shuffle_btn.hide()
+        self._settings_btn.hide()
+        self._controls.hide()
+        self.stack.set_visible_child_name("settings")
+
+    def _close_settings(self):
+        self._header_label.set_text("Wallpaper Picker")
+        self._shuffle_btn.show()
+        self._settings_btn.show()
+        self._controls.show()
+        # If we were on settings, return to wherever makes sense
+        current = self.stack.get_visible_child_name()
+        if current == "settings":
+            has_images = bool(self._paths)
+            self.stack.set_visible_child_name("grid" if has_images else "empty")
+
+    def _on_add_dir(self, _btn):
+        dialog = Gtk.FileChooserDialog(
+            title="Add Wallpaper Folder",
+            transient_for=self,
+            action=Gtk.FileChooserAction.SELECT_FOLDER,
+        )
+        dialog.add_button("Cancel", Gtk.ResponseType.CANCEL)
+        ok_btn = dialog.add_button("Add", Gtk.ResponseType.ACCEPT)
+        ok_btn.get_style_context().add_class("suggested-action")
+
+        start = self._wall_dirs[-1] if self._wall_dirs else os.path.expanduser("~")
+        if os.path.isdir(start):
+            dialog.set_current_folder(start)
+
+        response = dialog.run()
+        chosen   = dialog.get_filename()
+        dialog.destroy()
+
+        if response != Gtk.ResponseType.ACCEPT or not chosen:
+            return
+        if chosen in self._wall_dirs:
+            return   # already in list — silent no-op
+
+        self._wall_dirs.append(chosen)
+        self._save_current_config()
+        self._rebuild_dirs_ui()
+        self._reload_from_settings()
+
+    def _on_remove_dir(self, _btn, index):
+        if 0 <= index < len(self._wall_dirs):
+            self._wall_dirs.pop(index)
+            self._save_current_config()
+            self._rebuild_dirs_ui()
+            self._reload_from_settings()
+
+    def _on_max_changed(self, spin):
+        self._max_images = int(spin.get_value())
+        self._save_current_config()
+        self._reload_from_settings()
+
+    def _on_mode_changed(self, combo):
+        label = combo.get_active_text() or "Zoom"
+        self._picture_mode = PICTURE_MODES.get(label, "zoom")
+        self._save_current_config()
+
+    def _save_current_config(self):
+        _save_config({
+            "wall_dirs":    self._wall_dirs,
+            "max_images":   self._max_images,
+            "picture_mode": self._picture_mode,
+        })
+
+    def _reload_from_settings(self):
+        """Reset search/sort and reload the grid from current config."""
+        self._query_cache = ""
+        self.search_entry.handler_block_by_func(self._on_search_changed)
+        self.search_entry.set_text("")
+        self.search_entry.handler_unblock_by_func(self._on_search_changed)
+        self.sort_combo.handler_block_by_func(self._on_sort_changed)
+        self.sort_combo.set_active(2)   # Most Used
+        self.sort_combo.handler_unblock_by_func(self._on_sort_changed)
+        self._load_images("Most Used")
 
     # ------------------------------------------------------------------
     # Image loading
     # ------------------------------------------------------------------
 
     def _load_images(self, sort_mode="Most Used"):
+        # Cancel any in-flight work
+        if self._search_tid is not None:
+            try:
+                GLib.source_remove(self._search_tid)
+            except Exception:
+                pass
+            self._search_tid = None
         if self._load_idle_id is not None:
             GLib.source_remove(self._load_idle_id)
             self._load_idle_id = None
 
+        # Clear grid
         for child in self.flowbox.get_children():
             self.flowbox.remove(child)
-
         self._paths.clear()
         self._names.clear()
         self._active_child = None
         self._did_select   = False
 
-        images   = get_images(sort_mode)
-        cur_base = os.path.basename(self._current)
-        if cur_base in images:
-            images.remove(cur_base)
-            images.insert(0, cur_base)
+        # Fetch full paths from all dirs
+        all_paths = get_images(self._wall_dirs, sort_mode, self._max_images)
 
-        self._pending = images
+        # Bubble active wallpaper to front
+        cur = os.path.abspath(self._current) if self._current else ""
+        if cur and cur in all_paths:
+            all_paths.remove(cur)
+            all_paths.insert(0, cur)
+
+        self._pending = all_paths
 
         if not self._pending:
+            # Update empty label to reflect dirs
+            dirs_text = ", ".join(_shorten_path(d) for d in self._wall_dirs) if self._wall_dirs else "none"
+            self._empty_label.set_text(f"No wallpapers found in:\n{dirs_text}")
             self.stack.set_visible_child_name("empty")
             return
 
-        self.stack.set_visible_child_name("grid")
-        # PRIORITY_LOW (300) is lower than PRIORITY_DEFAULT_IDLE (200), meaning
-        # keyboard/mouse events (PRIORITY_DEFAULT = 0) always preempt loading.
+        # Only switch to grid if not on settings page
+        if self.stack.get_visible_child_name() != "settings":
+            self.stack.set_visible_child_name("grid")
         self._load_idle_id = GLib.idle_add(self._load_next, priority=GLib.PRIORITY_LOW)
 
     def _load_next(self):
@@ -363,17 +851,17 @@ class WallpaperPicker(Gtk.Window):
             self._load_idle_id = None
             return False
 
-        fname = self._pending.pop(0)
-        path  = os.path.join(WALL_DIR, fname)
+        path = self._pending.pop(0)
 
         try:
-            pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(path, THUMB_W, THUMB_H, True)
+            pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(
+                path, THUMB_W, THUMB_H, False)
         except Exception:
             if not self._pending:
                 self._load_idle_id = None
             return bool(self._pending)
 
-        display_name = _make_display_name(fname)
+        display_name = _make_display_name(os.path.basename(path))
 
         card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         card.get_style_context().add_class("card")
@@ -385,16 +873,15 @@ class WallpaperPicker(Gtk.Window):
         child.set_valign(Gtk.Align.START)
         child.add(card)
 
-        # Populate dicts BEFORE flowbox.add() — GTK calls _filter_func at
-        # insertion time. If the name isn't present yet, any active query
-        # permanently hides the child regardless of what it would have matched.
+        # Populate dicts BEFORE flowbox.add() — filter runs at insertion
         self._paths[child] = path
         self._names[child] = display_name.lower()
 
+        child.connect("button-press-event", self._on_child_click)
         self.flowbox.add(child)
         child.show_all()
 
-        if os.path.abspath(path) == os.path.abspath(self._current):
+        if os.path.abspath(path) == os.path.abspath(self._current or ""):
             self._active_child = child
             child.get_style_context().add_class("active")
 
@@ -413,22 +900,15 @@ class WallpaperPicker(Gtk.Window):
     # ------------------------------------------------------------------
 
     def _filter_func(self, child):
-        # _query_cache is set once per debounce tick, not once per child call.
-        # This avoids N GObject boundary crossings per invalidation.
         return not self._query_cache or self._query_cache in self._names.get(child, "")
 
     def _get_visible_children(self):
-        # get_child_visible() reflects the filter result after invalidate_filter().
-        # is_visible() reflects screen mapping and can be stale; don't use it here.
         return [c for c in self.flowbox.get_children() if c.get_child_visible()]
 
     def _on_sort_changed(self, combo):
-        # Cancel any in-flight search debounce so it can't fire after reload
-        # and re-apply a stale query against freshly loaded tiles.
         if self._search_tid is not None:
             GLib.source_remove(self._search_tid)
             self._search_tid = None
-        # Clear search so the new sort order is shown unfiltered.
         self._query_cache = ""
         self.search_entry.handler_block_by_func(self._on_search_changed)
         self.search_entry.set_text("")
@@ -444,9 +924,6 @@ class WallpaperPicker(Gtk.Window):
         self._search_tid  = None
         self._query_cache = self.search_entry.get_text().lower().strip()
         self.flowbox.invalidate_filter()
-        # When query is empty, show grid immediately — don't defer to idle
-        # because invalidate_filter() hasn't propagated yet at idle time,
-        # making _get_visible_children() return [] and wrongly show "no-results".
         if not self._query_cache:
             self.stack.set_visible_child_name("grid")
             return False
@@ -464,19 +941,113 @@ class WallpaperPicker(Gtk.Window):
         return False
 
     # ------------------------------------------------------------------
-    # Events
+    # Picking
     # ------------------------------------------------------------------
 
     def _on_pick(self, _fb, child):
         path = self._paths.get(child)
         if not path:
             return
-        set_wallpaper(path)
+        set_wallpaper(path, self._picture_mode)
+
         if self._active_child:
             self._active_child.get_style_context().remove_class("active")
         self._active_child = child
         child.get_style_context().add_class("active")
         self._current = path
+
+    # ------------------------------------------------------------------
+    # Shuffle
+    # ------------------------------------------------------------------
+
+    def _on_shuffle(self, _btn):
+        visible = self._get_visible_children()
+        if not visible:
+            return
+        choice = random.choice(visible)
+        self._on_pick(self.flowbox, choice)
+        self.flowbox.select_child(choice)
+
+    # ------------------------------------------------------------------
+    # Right-click context menu
+    # ------------------------------------------------------------------
+
+    def _on_child_click(self, child, event):
+        if event.button != 3:
+            return False
+        self._show_context_menu(child, event)
+        return True
+
+    def _show_context_menu(self, child, event):
+        path = self._paths.get(child)
+        if not path:
+            return
+
+        menu = Gtk.Menu()
+
+        item_set = Gtk.MenuItem(label="Set as Wallpaper")
+        item_set.connect("activate", lambda _: self._on_pick(self.flowbox, child))
+        menu.append(item_set)
+
+        menu.append(Gtk.SeparatorMenuItem())
+
+        item_reveal = Gtk.MenuItem(label="Reveal in File Manager")
+        item_reveal.connect("activate",
+                            lambda _: self._reveal_in_fm(os.path.dirname(path)))
+        menu.append(item_reveal)
+
+        item_delete = Gtk.MenuItem(label="Delete File\u2026")
+        item_delete.connect("activate", lambda _: self._confirm_delete(child, path))
+        menu.append(item_delete)
+
+        menu.show_all()
+        menu.popup_at_pointer(event)
+
+    def _reveal_in_fm(self, folder):
+        try:
+            subprocess.Popen(["xdg-open", folder])
+        except Exception:
+            pass
+
+    def _confirm_delete(self, child, path):
+        fname = os.path.basename(path)
+        dialog = Gtk.MessageDialog(
+            transient_for=self, modal=True,
+            message_type=Gtk.MessageType.WARNING,
+            buttons=Gtk.ButtonsType.NONE,
+            text="Delete wallpaper?",
+        )
+        dialog.format_secondary_text(f'"{fname}" will be permanently deleted.')
+        dialog.add_button("Cancel", Gtk.ResponseType.CANCEL)
+        delete_btn = dialog.add_button("Delete", Gtk.ResponseType.OK)
+        delete_btn.get_style_context().add_class("destructive-action")
+
+        response = dialog.run()
+        dialog.destroy()
+
+        if response != Gtk.ResponseType.OK:
+            return
+        try:
+            os.remove(path)
+        except OSError:
+            return
+
+        if self._active_child == child:
+            self._active_child = None
+            self._current      = ""
+        self._paths.pop(child, None)
+        self._names.pop(child, None)
+        self.flowbox.remove(child)
+        GLib.idle_add(self._select_first_visible)
+
+    # ------------------------------------------------------------------
+    # Keyboard
+    # ------------------------------------------------------------------
+
+    def _on_header_drag(self, _widget, event):
+        if event.button == 1:
+            self.begin_move_drag(
+                event.button, int(event.x_root), int(event.y_root), event.time)
 
     def _on_search_key(self, _entry, event):
         if event.keyval == Gdk.KEY_Down:
@@ -488,11 +1059,19 @@ class WallpaperPicker(Gtk.Window):
         return False
 
     def _on_key(self, _w, event):
-        kv = event.keyval
+        kv   = event.keyval
+        ctrl = event.state & Gdk.ModifierType.CONTROL_MASK
 
-        if kv == Gdk.KEY_Escape:
-            self.destroy()
+        if kv == Gdk.KEY_Escape or (ctrl and kv in (Gdk.KEY_w, Gdk.KEY_q)):
+            if self.stack.get_visible_child_name() == "settings":
+                self._close_settings()
+            else:
+                self.destroy()
             return True
+
+        # Don't intercept anything else while on settings page
+        if self.stack.get_visible_child_name() == "settings":
+            return False
 
         if kv == Gdk.KEY_Return:
             if self.search_entry.has_focus():
@@ -508,8 +1087,6 @@ class WallpaperPicker(Gtk.Window):
                 return True
 
         if kv == Gdk.KEY_Up:
-            # get_focus() returns the inner card widget, not the FlowBoxChild.
-            # Walk up the parent chain to find the FlowBoxChild.
             widget = self.get_focus()
             while widget is not None and not isinstance(widget, Gtk.FlowBoxChild):
                 widget = widget.get_parent()
@@ -534,6 +1111,23 @@ class WallpaperPicker(Gtk.Window):
                 return True
 
         return False
+
+    # ------------------------------------------------------------------
+    # Misc
+    # ------------------------------------------------------------------
+
+    def _center_on_screen(self):
+        try:
+            display = Gdk.Display.get_default()
+            if display is None:
+                return
+            monitor = display.get_primary_monitor() or display.get_monitor(0)
+            if monitor is None:
+                return
+            geo = monitor.get_geometry()
+            self.move((geo.width - WIN_WIDTH) // 2, 50)
+        except Exception:
+            pass
 
 
 # ---------------------------------------------------------------------------

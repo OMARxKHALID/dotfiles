@@ -16,8 +16,9 @@ Zsh + Bash shell config with Powerlevel10k, zinit, and fzf.
 | `.config/zsh/.zshenv`                                        | Zsh environment (XDG dirs, PATH, defaults)                   |
 | `.config/zsh/.zshrc`                                         | Zsh interactive (zinit plugins, completion, history, fzf)    |
 | `.config/zsh/.p10k.zsh`                                      | Powerlevel10k prompt theme                                   |
-| `.config/kitty/kitty.conf`                                   | Kitty terminal config (Gruvbox Dark theme)                   |
-| `.config/terminal/tcs-gruvbox.dconf`                         | Gruvbox color scheme for GNOME Terminal                      |
+| `.config/kitty/kitty.conf`                                   | Kitty terminal configuration                                 |
+| `.config/terminal/tcs-gruvbox.dconf`                         | GNOME Terminal color scheme                                  |
+| `.config/bat/config`                                         | Bat configuration                                            |
 
 ## How Shell Startup Works
 
@@ -45,6 +46,7 @@ cp -r linux/.local/share/gnome-shell/extensions/wallpaper-picker@omar \
   ~/.local/share/gnome-shell/extensions/
 cp -r linux/.config/zsh ~/.config/
 cp linux/.config/aliasrc ~/.config/
+cp -r linux/.config/bat ~/.config/
 cp -r linux/.config/kitty ~/.config/
 cp -r linux/.config/terminal ~/.config/
 ```
