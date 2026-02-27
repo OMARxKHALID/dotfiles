@@ -5,18 +5,22 @@ import os
 # ---------------------------------------------------------------------------
 
 DEFAULT_WALL_DIRS = [os.path.expanduser("~/Pictures/Wallpapers")]
-THUMB_W     = 160
-THUMB_H     = 90
-COLS        = 3
+THUMB_W     = 180
+THUMB_H     = 101
+DEFAULT_COLS  = 3
+DEFAULT_ROWS  = 3
 IMAGE_EXTS  = (".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tiff", ".tif", ".avif")
 DATA_DIR    = os.path.expanduser("~/.local/share/wallpaper-picker")
 STATS_FILE  = os.path.join(DATA_DIR, "stats.json")
-CONFIG_FILE = os.path.join(DATA_DIR, "config.json")
+CONFIG_FILE  = os.path.join(DATA_DIR, "config.json")
+FAVORITES_FILE = os.path.join(DATA_DIR, "favorites.json")
 RUNTIME_DIR = os.environ.get("XDG_RUNTIME_DIR") or os.path.expanduser("~/.cache")
 LOCK_FILE   = os.path.join(RUNTIME_DIR, "wallpaper-picker.lock")
-WIN_WIDTH   = 600
-SCROLL_H    = 420
+DEFAULT_WIN_WIDTH   = 600
+DEFAULT_SCROLL_H    = 420
 SEARCH_DEBOUNCE_MS = 150
+CACHE_DIR = os.path.expanduser("~/.cache/wallpaper-picker")
+THUMB_CACHE_DIR = os.path.join(CACHE_DIR, "thumbnails")
 
 PICTURE_MODES = {
     "Zoom":    "zoom",
@@ -66,13 +70,15 @@ window {
 
 /* ── Header ─────────────────────────────────────────────────────────────── */
 .header-box {
-    padding: 12px 14px 8px 14px;
+    padding: 8px 6px 14px 6px;
 }
 
 .header {
-    font-size: 16px;
-    font-weight: 800;
+    font-size: 15px;
+    font-weight: 900;
     color: #fabd2f;
+    letter-spacing: 1.5px;
+    opacity: 0.95;
 }
 
 /* ── Flowbox / thumbnails ───────────────────────────────────────────────── */
@@ -128,6 +134,69 @@ flowboxchild.active:hover {
     padding: 4px 2px 2px 2px;
 }
 
+.metadata-overlay {
+    background-color: rgba(29, 32, 33, 0.45);
+    color: #ebdbb2;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+    font-size: 10px;
+    font-weight: bold;
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin: 4px;
+}
+
+.star-indicator {
+    color: #fabd2f;
+    font-size: 18px;
+    padding: 6px;
+    text-shadow: 0 0 10px rgba(250, 189, 47, 0.7), 0 1px 4px rgba(0,0,0,0.9);
+}
+
+/* ── Scrollbars ─────────────────────────────────────────────────────────── */
+scrollbar {
+    background-color: transparent;
+    transition: all 0.2s ease;
+}
+
+scrollbar slider {
+    background-color: rgba(146, 131, 116, 0.2);
+    border-radius: 10px;
+    border: 3px solid transparent;
+    transition: all 0.2s ease;
+}
+
+scrollbar:hover slider {
+    background-color: rgba(146, 131, 116, 0.5);
+}
+
+scrollbar.vertical slider {
+    min-width: 4px;
+}
+
+scrollbar.horizontal slider {
+    min-height: 4px;
+}
+
+/* ── Hints & Empty States ────────────────────────────────────────────────── */
+.empty-hint {
+    background-color: rgba(250, 189, 47, 0.1);
+    color: #fabd2f;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.8px;
+    margin-top: 24px;
+    padding: 8px 18px;
+    border-radius: 20px;
+    border: 1px solid rgba(250, 189, 47, 0.2);
+    transition: all 0.15s ease;
+}
+
+.empty-hint:hover {
+    background-color: rgba(250, 189, 47, 0.2);
+    border-color: rgba(250, 189, 47, 0.5);
+    box-shadow: 0 0 12px rgba(250, 189, 47, 0.2);
+}
+
 /* ── Inputs ─────────────────────────────────────────────────────────────── */
 entry,
 combobox button,
@@ -137,7 +206,7 @@ spinbutton {
     border: 1px solid rgba(60, 56, 54, 0.6);
     border-radius: 8px;
     font-size: 12px;
-    min-height: 30px;
+    min-height: 34px;
     box-shadow: none;
     transition: border-color 0.15s ease, background-color 0.15s ease;
 }
@@ -287,23 +356,15 @@ spinbutton button:hover {
     font-weight: 500;
 }
 
-.empty-hint {
-    color: #fabd2f;
-    font-size: 12px;
-    font-weight: 700;
-    margin-top: 24px;
-    padding: 6px 16px;
-    background-color: rgba(250, 189, 47, 0.1);
-    border-radius: 20px;
-}
 
 /* ── Settings page ──────────────────────────────────────────────────────── */
 .settings-section-label {
     color: #b8bb26;
-    font-size: 12px;
-    font-weight: 800;
-    letter-spacing: 0.5px;
-    padding: 18px 16px 6px 16px;
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: 1.2px;
+    padding: 22px 16px 8px 16px;
+    opacity: 0.9;
 }
 
 .settings-row {
@@ -380,5 +441,35 @@ spinbutton button:hover {
     background-color: rgba(131, 165, 152, 0.12);
     border-color: #83a598;
     color: #ebdbb2;
+}
+
+/* ── Storage & Destructive Buttons ─────────────────────────────────────── */
+.destructive-btn {
+    background-color: rgba(251, 73, 52, 0.1);
+    color: #fb4934;
+    border: 1px solid rgba(251, 73, 52, 0.4);
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: bold;
+    min-height: 28px;
+    padding: 0 14px;
+    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.destructive-btn:hover {
+    background-color: rgba(251, 73, 52, 0.25);
+    border-color: #fb4934;
+    color: #ebdbb2;
+}
+
+.destructive-btn:active {
+    background-color: rgba(251, 73, 52, 0.4);
+}
+
+.storage-row {
+    padding: 10px 16px;
+    margin: 4px 16px;
+    background-color: rgba(40, 40, 40, 0.3);
+    border-radius: 8px;
 }
 """

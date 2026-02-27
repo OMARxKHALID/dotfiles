@@ -1,20 +1,24 @@
 import os
+import shutil
 import json
 import time
 import random
 import fcntl
 import subprocess
 import threading
+import hashlib
 from urllib.parse import unquote, urlparse
 
 import gi
 gi.require_version("Gio", "2.0")
 gi.require_version("GLib", "2.0")
-from gi.repository import Gio, GLib
+gi.require_version("GdkPixbuf", "2.0")
+from gi.repository import Gio, GLib, GdkPixbuf
 
 from constants import (
     DATA_DIR, STATS_FILE, CONFIG_FILE, LOCK_FILE, RUNTIME_DIR,
-    IMAGE_EXTS, PICTURE_MODES, DEFAULT_WALL_DIRS
+    IMAGE_EXTS, PICTURE_MODES, DEFAULT_WALL_DIRS,
+    THUMB_CACHE_DIR, THUMB_W, THUMB_H, FAVORITES_FILE
 )
 
 _stats_lock = threading.Lock()
@@ -121,6 +125,25 @@ def _save_config(config):
 
 
 # ---------------------------------------------------------------------------
+# Favorites
+# ---------------------------------------------------------------------------
+
+def load_favorites():
+    try:
+        with open(FAVORITES_FILE, "r") as f:
+            return set(json.load(f))
+    except (OSError, json.JSONDecodeError):
+        return set()
+
+def save_favorites(fav_set):
+    try:
+        os.makedirs(os.path.dirname(FAVORITES_FILE), exist_ok=True)
+        with open(FAVORITES_FILE, "w") as f:
+            json.dump(list(fav_set), f)
+    except OSError:
+        pass
+
+# ---------------------------------------------------------------------------
 # Image helpers
 # ---------------------------------------------------------------------------
 
@@ -141,7 +164,13 @@ def get_images(wall_dirs, sort_mode="Most Used", max_images=0):
         except OSError:
             continue
 
-    if sort_mode == "Newest":
+    favs = load_favorites()
+
+    if sort_mode == "Starred":
+        favs = load_favorites()
+        all_paths = [p for p in all_paths if os.path.basename(p) in favs]
+        all_paths.sort(key=lambda p: os.path.basename(p).lower())
+    elif sort_mode == "Newest":
         all_paths.sort(key=_safe_mtime, reverse=True)
     elif sort_mode == "Most Used":
         stats = _load_stats()
@@ -213,3 +242,73 @@ def perform_random_shuffle():
     choice = random.choice(images)
     set_wallpaper(choice, mode)
     return True
+
+def get_thumbnail(image_path):
+    """
+    Returns the path to a cached thumbnail.
+    Creates the thumbnail if it doesn't exist or is outdated.
+    """
+    try:
+        os.makedirs(THUMB_CACHE_DIR, exist_ok=True)
+
+        # 1. Create a unique filename based on the full path
+        path_hash = hashlib.md5(image_path.encode()).hexdigest()
+        thumb_path = os.path.join(THUMB_CACHE_DIR, f"{path_hash}.png")
+
+        # 2. Check if cache is valid (exists and is newer than original)
+        if os.path.exists(thumb_path):
+            if os.path.getmtime(thumb_path) >= os.path.getmtime(image_path):
+                return thumb_path
+
+        # 3. Not in cache? Generate it.
+        pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(
+            image_path, THUMB_W, THUMB_H, False)
+
+        pixbuf.savev(thumb_path, "png", [], [])
+        return thumb_path
+
+    except Exception:
+        return image_path  # Fallback to original image on error
+
+def get_cache_info():
+    """Returns (total_size_bytes, file_count) for the thumbnail cache."""
+    total_size = 0
+    count = 0
+    if os.path.isdir(THUMB_CACHE_DIR):
+        for entry in os.scandir(THUMB_CACHE_DIR):
+            if entry.is_file():
+                total_size += entry.stat().st_size
+                count += 1
+    return total_size, count
+
+def clear_cache():
+    """Deletes all files in the thumbnail cache directory."""
+    if os.path.exists(THUMB_CACHE_DIR):
+        try:
+            shutil.rmtree(THUMB_CACHE_DIR)
+            os.makedirs(THUMB_CACHE_DIR, exist_ok=True)
+            return True
+        except OSError:
+            return False
+    return True
+
+def get_image_info(path):
+    """Returns a string description of image metadata (Resolution and Size)."""
+    try:
+        # File Size
+        size_bytes = os.path.getsize(path)
+        if size_bytes > 1024 * 1024:
+            size_str = f"{size_bytes / (1024 * 1024):.1f} MB"
+        else:
+            size_str = f"{size_bytes / 1024:.0f} KB"
+
+        # Resolution (Pixbuf can read header info without full decoding)
+        info = GdkPixbuf.Pixbuf.get_file_info(path)
+        if info:
+            res_str = f"{info[1]}x{info[2]}"
+        else:
+            res_str = "???"
+
+        return f"{res_str} | {size_str}"
+    except Exception:
+        return "Unknown"

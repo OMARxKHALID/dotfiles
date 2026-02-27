@@ -12,7 +12,7 @@ import * as PanelMenu from "resource:///org/gnome/shell/ui/panelMenu.js";
 import * as PopupMenu from "resource:///org/gnome/shell/ui/popupMenu.js";
 
 const BIN_NAME = "wallpaper-picker";
-const APP_ICON = "preferences-desktop-wallpaper-symbolic";
+const APP_ICON = "emblem-photos-symbolic";
 const SMALL_ICON_SIZE = 14;
 
 const Paths = {

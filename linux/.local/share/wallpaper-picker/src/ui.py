@@ -9,14 +9,17 @@ gi.require_version("Pango", "1.0")
 from gi.repository import Gdk, GdkPixbuf, Gio, GLib, Gtk, Pango
 
 from constants import (
-    WIN_WIDTH, SCROLL_H, COLS, THUMB_W, THUMB_H, CSS,
+    DEFAULT_WIN_WIDTH, DEFAULT_SCROLL_H, DEFAULT_COLS, DEFAULT_ROWS,
+    THUMB_W, THUMB_H, CSS,
     PICTURE_MODES, PICTURE_MODE_LABELS, SEARCH_DEBOUNCE_MS,
     DEFAULT_WALL_DIRS
 )
 from utils import (
     get_current_wallpaper, set_wallpaper, get_images,
     _load_config, _save_config, _make_display_name,
-    _shorten_path, reveal_in_fm
+    _shorten_path, reveal_in_fm, get_thumbnail,
+    get_cache_info, clear_cache, get_image_info,
+    load_favorites, save_favorites
 )
 
 class WallpaperPicker(Gtk.Window):
@@ -31,7 +34,15 @@ class WallpaperPicker(Gtk.Window):
         self.set_keep_above(True)
         self.set_skip_taskbar_hint(True)
         self.set_decorated(False)
-        self.set_size_request(WIN_WIDTH, -1)
+
+        # Load config first to define dimensions
+        cfg = _load_config()
+        self._cols = int(cfg.get("columns", DEFAULT_COLS))
+        self._rows = int(cfg.get("rows", DEFAULT_ROWS))
+        self._win_width = (self._cols * 192) + 100
+        self._scroll_h  = (self._rows * 155)
+
+        self.set_size_request(self._win_width, -1)
 
         # ── Startup Notification ─────────────────────────────────────────────
         # Consume DESKTOP_STARTUP_ID passed by the extension.
@@ -62,8 +73,7 @@ class WallpaperPicker(Gtk.Window):
         if visual:
             self.set_visual(visual)
 
-        # Load config
-        cfg = _load_config()
+        # Loaded config
         self._wall_dirs    = cfg.get("wall_dirs") or DEFAULT_WALL_DIRS
         self._max_images   = int(cfg.get("max_images", 0))
         self._picture_mode = cfg.get("picture_mode", "zoom")
@@ -79,25 +89,27 @@ class WallpaperPicker(Gtk.Window):
         self._search_tid    = None
         self._did_select    = False
         self._query_cache   = ""
+        self._is_settings   = (start_page == "settings")
+        self._favorites     = load_favorites()
+        self._star_widgets  = {} # FlowBoxChild -> Gtk.Label (star)
 
         self._build_ui()
         self.connect("destroy", self._on_destroy)
+
+        # ── Pre-positioning ──────────────────────────────────────────────────
+        self._center_on_screen()
+        self.show_all()
 
         if start_page == "settings":
             self._open_settings(None)
 
         self._load_images()
 
-        # ── Pre-positioning ──────────────────────────────────────────────────
-        # Call move() BEFORE show_all(). This sets the initial position hint
-        # that GTK sends to the Window Manager during the "map" request.
-        self._center_on_screen()
-
-        self.show_all()
         # ── Position after WM map ────────────────────────────────────────────
         # Connect to map-event as a safety measure. If Mutter ignores the initial
         # hint and applies Smart Placement, this will snap it back instantly.
         self.connect("map-event", self._on_first_map)
+
 
     def _get_startup_timestamp(self):
         """Extracts the X server timestamp from the DESKTOP_STARTUP_ID."""
@@ -146,39 +158,52 @@ class WallpaperPicker(Gtk.Window):
 
     def _build_header(self):
         self._header_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+        self._header_row.get_style_context().add_class("header-box")
 
-        # ── Left: Back Button & Title ────────────────────────────────────────
+        # ── Left Section ─────────────────────────────────────────────────────
+        left_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+        left_box.set_size_request(150, -1) # Balanced width for centering
+
         self._back_btn = Gtk.Button(label="\u2190 Back")
         self._back_btn.get_style_context().add_class("back-btn")
         self._back_btn.connect("clicked", lambda _: self._close_settings())
         self._back_btn.set_valign(Gtk.Align.CENTER)
-        self._back_btn.set_margin_end(8)
-        self._back_btn.set_no_show_all(True) # Prevent show_all() from forcing it visible
+        self._back_btn.set_no_show_all(True)
         self._back_btn.hide()
-        self._header_row.pack_start(self._back_btn, False, False, 0)
+        left_box.pack_start(self._back_btn, False, False, 0)
+        self._header_row.pack_start(left_box, False, False, 0)
 
-        self._header_label = Gtk.Label(label="Wallpaper Picker")
+        # ── Center Section (Title) ───────────────────────────────────────────
+        self._header_label = Gtk.Label(label="WALLPAPER PICKER")
         self._header_label.get_style_context().add_class("header")
-        self._header_label.set_xalign(0)
+        self._header_label.set_halign(Gtk.Align.CENTER)
+
         header_eb = Gtk.EventBox()
+        header_eb.set_visible_window(False)
         header_eb.add(self._header_label)
         header_eb.connect("button-press-event", self._on_header_drag)
         self._header_row.pack_start(header_eb, True, True, 0)
 
-        # ── Right: Action Buttons ──────────────────────────────────────────
-        self._shuffle_btn = Gtk.Button(label="\u21c4 Shuffle")
-        self._shuffle_btn.get_style_context().add_class("shuffle-btn")
-        self._shuffle_btn.set_tooltip_text("Apply a random wallpaper")
-        self._shuffle_btn.connect("clicked", self._on_shuffle)
-        self._shuffle_btn.set_valign(Gtk.Align.CENTER)
-        self._header_row.pack_end(self._shuffle_btn, False, False, 0)
+        # ── Right Section (Actions) ──────────────────────────────────────────
+        right_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+        right_box.set_size_request(150, -1) # Balanced width with left side
 
         self._settings_btn = Gtk.Button(label="\u2699")
         self._settings_btn.get_style_context().add_class("icon-btn")
         self._settings_btn.set_tooltip_text("Settings")
         self._settings_btn.connect("clicked", self._open_settings)
         self._settings_btn.set_valign(Gtk.Align.CENTER)
-        self._header_row.pack_end(self._settings_btn, False, False, 4)
+        right_box.pack_end(self._settings_btn, False, False, 0)
+
+        self._shuffle_btn = Gtk.Button(label="\u21c4 Shuffle")
+        self._shuffle_btn.get_style_context().add_class("shuffle-btn")
+        self._shuffle_btn.set_tooltip_text("Apply a random wallpaper")
+        self._shuffle_btn.connect("clicked", self._on_shuffle)
+        self._shuffle_btn.set_valign(Gtk.Align.CENTER)
+        self._shuffle_btn.set_margin_end(8)
+        right_box.pack_end(self._shuffle_btn, False, False, 0)
+
+        self._header_row.pack_start(right_box, False, False, 0)
 
         self._vbox.pack_start(self._header_row, False, False, 0)
 
@@ -195,7 +220,7 @@ class WallpaperPicker(Gtk.Window):
         self._controls.pack_start(self.search_entry, True, True, 0)
 
         self.sort_combo = Gtk.ComboBoxText()
-        for m in ("A-Z", "Newest", "Most Used", "Recent"):
+        for m in ("A-Z", "Starred", "Newest", "Most Used", "Recent"):
             self.sort_combo.append_text(m)
         self.sort_combo.set_active(2)
         self.sort_combo.connect("changed", self._on_sort_changed)
@@ -208,29 +233,29 @@ class WallpaperPicker(Gtk.Window):
         self.flowbox = Gtk.FlowBox()
         self.flowbox.set_valign(Gtk.Align.START)
         self.flowbox.set_halign(Gtk.Align.START)
-        self.flowbox.set_max_children_per_line(COLS)
-        self.flowbox.set_min_children_per_line(COLS)
+        self.flowbox.set_max_children_per_line(self._cols)
+        self.flowbox.set_min_children_per_line(self._cols)
         self.flowbox.set_homogeneous(True)
         self.flowbox.set_selection_mode(Gtk.SelectionMode.SINGLE)
         self.flowbox.set_activate_on_single_click(True)
         self.flowbox.set_filter_func(self._filter_func)
         self.flowbox.connect("child-activated", self._on_pick)
 
-        scroll = Gtk.ScrolledWindow()
-        scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
-        scroll.set_min_content_height(SCROLL_H)
-        scroll.set_max_content_height(SCROLL_H)
-        scroll.set_min_content_width(WIN_WIDTH - 16)
-        scroll.set_propagate_natural_height(False)
-        scroll.set_propagate_natural_width(False)
-        scroll.add(self.flowbox)
-        self.stack.add_named(scroll, "grid")
+        self._grid_scroll = Gtk.ScrolledWindow()
+        self._grid_scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        self._grid_scroll.set_min_content_height(self._scroll_h)
+        self._grid_scroll.set_max_content_height(self._scroll_h)
+        self._grid_scroll.set_min_content_width(self._win_width - 16)
+        self._grid_scroll.set_propagate_natural_height(False)
+        self._grid_scroll.set_propagate_natural_width(False)
+        self._grid_scroll.add(self.flowbox)
+        self.stack.add_named(self._grid_scroll, "grid")
 
         empty_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         empty_box.get_style_context().add_class("empty-box")
         empty_box.set_valign(Gtk.Align.CENTER)
         empty_box.set_halign(Gtk.Align.CENTER)
-        empty_box.set_size_request(-1, SCROLL_H)
+        empty_box.set_size_request(-1, self._scroll_h)
 
         self._empty_icon = Gtk.Label()
         self._empty_icon.get_style_context().add_class("empty-icon")
@@ -246,13 +271,16 @@ class WallpaperPicker(Gtk.Window):
         self._empty_label.set_justify(Gtk.Justification.CENTER)
         empty_box.pack_start(self._empty_label, False, False, 0)
 
-        empty_hint_label = Gtk.Label(label="\u2699 Open Settings")
-        empty_hint_label.get_style_context().add_class("empty-hint")
+        self._empty_hint = Gtk.Label(label="\u2699 Open Settings")
+        self._empty_hint.get_style_context().add_class("empty-hint")
 
         empty_hint_eb = Gtk.EventBox()
         empty_hint_eb.set_visible_window(False)
-        empty_hint_eb.add(empty_hint_label)
-        empty_hint_eb.connect("button-press-event", lambda _w, _e: self._open_settings(None))
+        empty_hint_eb.add(self._empty_hint)
+        def _on_empty_hint_clicked(_w, _e):
+            if self.sort_combo.get_active_text() != "Starred":
+                self._open_settings(None)
+        empty_hint_eb.connect("button-press-event", _on_empty_hint_clicked)
         # Cursor change on realize for GTK3 EventBox
         empty_hint_eb.connect("realize", lambda w: w.get_window().set_cursor(
             Gdk.Cursor.new_from_name(Gdk.Display.get_default(), "pointer")))
@@ -265,6 +293,7 @@ class WallpaperPicker(Gtk.Window):
         no_results_box.get_style_context().add_class("empty-box")
         no_results_box.set_valign(Gtk.Align.CENTER)
         no_results_box.set_halign(Gtk.Align.CENTER)
+        no_results_box.set_size_request(-1, self._scroll_h)
 
         nr_icon = Gtk.Label()
         nr_icon.get_style_context().add_class("empty-icon")
@@ -275,9 +304,20 @@ class WallpaperPicker(Gtk.Window):
         nr_title.get_style_context().add_class("empty-title")
         no_results_box.pack_start(nr_title, False, False, 0)
 
-        no_results = Gtk.Label(label="Try a different search term")
-        no_results.get_style_context().add_class("empty-subtitle")
-        no_results_box.pack_start(no_results, False, False, 0)
+        nr_subtitle = Gtk.Label(label="Try a different search term")
+        nr_subtitle.get_style_context().add_class("empty-subtitle")
+        no_results_box.pack_start(nr_subtitle, False, False, 0)
+
+        # Consistency: Add clear search hint
+        nr_hint_lbl = Gtk.Label(label="\u2715 Clear Search")
+        nr_hint_lbl.get_style_context().add_class("empty-hint")
+        nr_hint_eb = Gtk.EventBox()
+        nr_hint_eb.set_visible_window(False)
+        nr_hint_eb.add(nr_hint_lbl)
+        nr_hint_eb.connect("button-press-event", self._on_clear_search)
+        nr_hint_eb.connect("realize", lambda w: w.get_window().set_cursor(
+            Gdk.Cursor.new_from_name(Gdk.Display.get_default(), "pointer")))
+        no_results_box.pack_start(nr_hint_eb, False, False, 0)
 
         self.stack.add_named(no_results_box, "no-results")
 
@@ -288,8 +328,8 @@ class WallpaperPicker(Gtk.Window):
     def _build_settings_page(self):
         outer = Gtk.ScrolledWindow()
         outer.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
-        outer.set_min_content_height(SCROLL_H)
-        outer.set_max_content_height(SCROLL_H)
+        outer.set_min_content_height(self._scroll_h)
+        outer.set_max_content_height(self._scroll_h)
 
         page = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         outer.add(page)
@@ -369,6 +409,77 @@ class WallpaperPicker(Gtk.Window):
         sep2.get_style_context().add_class("separator-line")
         page.pack_start(sep2, False, False, 0)
 
+        cols_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        cols_row.get_style_context().add_class("settings-row")
+        lbl_cols = Gtk.Label(label="Grid columns")
+        lbl_cols.get_style_context().add_class("settings-label")
+        lbl_cols.set_xalign(0)
+        cols_row.pack_start(lbl_cols, True, True, 0)
+
+        adj_cols = Gtk.Adjustment(
+            value=self._cols,
+            lower=2, upper=8, step_increment=1, page_increment=1,
+        )
+        self._cols_spin = Gtk.SpinButton(adjustment=adj_cols, climb_rate=1, digits=0)
+        self._cols_spin.set_width_chars(6)
+        self._cols_spin.connect("value-changed", self._on_cols_changed)
+        cols_row.pack_end(self._cols_spin, False, False, 0)
+        page.pack_start(cols_row, False, False, 0)
+
+        hint_cols = Gtk.Label(label="Adjust how many wallpapers to show per row")
+        hint_cols.get_style_context().add_class("settings-hint")
+        hint_cols.set_xalign(0)
+        page.pack_start(hint_cols, False, False, 0)
+
+        rows_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        rows_row.get_style_context().add_class("settings-row")
+        lbl_rows = Gtk.Label(label="Grid rows")
+        lbl_rows.get_style_context().add_class("settings-label")
+        lbl_rows.set_xalign(0)
+        rows_row.pack_start(lbl_rows, True, True, 0)
+
+        adj_rows = Gtk.Adjustment(
+            value=self._rows,
+            lower=2, upper=8, step_increment=1, page_increment=1,
+        )
+        self._rows_spin = Gtk.SpinButton(adjustment=adj_rows, climb_rate=1, digits=0)
+        self._rows_spin.set_width_chars(6)
+        self._rows_spin.connect("value-changed", self._on_rows_changed)
+        rows_row.pack_end(self._rows_spin, False, False, 0)
+        page.pack_start(rows_row, False, False, 0)
+
+        hint_rows = Gtk.Label(label="Adjust how many rows are visible before scrolling")
+        hint_rows.get_style_context().add_class("settings-hint")
+        hint_rows.set_xalign(0)
+        page.pack_start(hint_rows, False, False, 0)
+
+        sep3 = Gtk.Box()
+        sep3.get_style_context().add_class("separator-line")
+        page.pack_start(sep3, False, False, 0)
+
+        lbl_storage = Gtk.Label(label="STORAGE & PERFORMANCE")
+        lbl_storage.get_style_context().add_class("settings-section-label")
+        lbl_storage.set_xalign(0)
+        page.pack_start(lbl_storage, False, False, 0)
+
+        storage_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        storage_row.get_style_context().add_class("storage-row")
+        self._cache_label = Gtk.Label(label="Calculating cache size...")
+        self._cache_label.get_style_context().add_class("settings-label")
+        self._cache_label.set_xalign(0)
+        storage_row.pack_start(self._cache_label, True, True, 0)
+
+        clear_btn = Gtk.Button(label="Clear Cache")
+        clear_btn.get_style_context().add_class("destructive-btn")
+        clear_btn.connect("clicked", self._on_clear_cache)
+        storage_row.pack_end(clear_btn, False, False, 0)
+        page.pack_start(storage_row, False, False, 0)
+
+        hint_storage = Gtk.Label(label="Deleting cache will free space but slightly slow down the next launch.")
+        hint_storage.get_style_context().add_class("settings-hint")
+        hint_storage.set_xalign(0)
+        page.pack_start(hint_storage, False, False, 0)
+
         return outer
 
     def _rebuild_dirs_ui(self):
@@ -395,7 +506,9 @@ class WallpaperPicker(Gtk.Window):
         self._dirs_container.show_all()
 
     def _open_settings(self, _btn):
-        self._header_label.set_text("Settings")
+        self._is_settings = True
+        self._header_label.set_text("SETTINGS")
+        self._update_cache_label()
         self._shuffle_btn.hide()
         self._settings_btn.hide()
         self._back_btn.show()
@@ -403,7 +516,8 @@ class WallpaperPicker(Gtk.Window):
         self.stack.set_visible_child_name("settings")
 
     def _close_settings(self):
-        self._header_label.set_text("Wallpaper Picker")
+        self._is_settings = False
+        self._header_label.set_text("WALLPAPER PICKER")
         self._back_btn.hide()
         self._shuffle_btn.show()
         self._settings_btn.show()
@@ -447,6 +561,8 @@ class WallpaperPicker(Gtk.Window):
             self._save_current_config()
             self._rebuild_dirs_ui()
             self._reload_from_settings()
+            # Silently clear cache after removing a folder to prune orphans
+            GLib.idle_add(clear_cache)
 
     def _on_max_changed(self, spin):
         self._max_images = int(spin.get_value())
@@ -458,11 +574,59 @@ class WallpaperPicker(Gtk.Window):
         self._picture_mode = PICTURE_MODES.get(label, "zoom")
         self._save_current_config()
 
+    def _on_cols_changed(self, spin):
+        self._cols = int(spin.get_value())
+        self._win_width = (self._cols * 192) + 100
+
+        # Update UI live
+        self.set_size_request(self._win_width, -1)
+        self.flowbox.set_max_children_per_line(self._cols)
+        self.flowbox.set_min_children_per_line(self._cols)
+        self._grid_scroll.set_min_content_width(self._win_width - 16)
+
+        self.resize(self._win_width, 1) # Force immediate window size update
+        self._center_on_screen()
+        self._save_current_config()
+
+    def _on_rows_changed(self, spin):
+        self._rows = int(spin.get_value())
+        self._scroll_h = (self._rows * 151)
+
+        # Update ALL stack pages so they stay consistent
+        for name in ["grid", "settings", "empty", "no-results"]:
+            page = self.stack.get_child_by_name(name)
+            if not page: continue
+
+            if isinstance(page, Gtk.ScrolledWindow):
+                page.set_min_content_height(self._scroll_h)
+                page.set_max_content_height(self._scroll_h)
+            else:
+                # empty and no-results are Boxes
+                page.set_size_request(-1, self._scroll_h)
+
+        # Force window to re-calculate its height based on new child sizes
+        self.resize(self._win_width, 1)
+        self._save_current_config()
+
+    def _update_cache_label(self):
+        """Updates the storage label with human-readable cache size."""
+        size_bytes, count = get_cache_info()
+        size_mb = size_bytes / (1024 * 1024)
+        self._cache_label.set_text(f"Cache: {size_mb:.1f} MB ({count} files)")
+
+    def _on_clear_cache(self, _btn):
+        if clear_cache():
+            self._update_cache_label()
+            # Reload images to ensure UI consistency
+            self._reload_from_settings()
+
     def _save_current_config(self):
         _save_config({
             "wall_dirs":    self._wall_dirs,
             "max_images":   self._max_images,
             "picture_mode": self._picture_mode,
+            "columns":      self._cols,
+            "rows":         self._rows,
         })
 
     def _reload_from_settings(self):
@@ -490,6 +654,7 @@ class WallpaperPicker(Gtk.Window):
             self.flowbox.remove(child)
         self._paths.clear()
         self._names.clear()
+        self._star_widgets.clear()
         self._active_child = None
         self._did_select   = False
 
@@ -506,18 +671,29 @@ class WallpaperPicker(Gtk.Window):
             if not self._wall_dirs:
                 self._empty_title.set_text("No Folders Added")
                 self._empty_label.set_text("Go to Settings to add your wallpaper directory")
+                self._empty_icon.set_markup('<span size="48000">\U0001f5bc</span>')
+                self._empty_hint.set_text("\u2699 Open Settings")
+            elif sort_mode == "Starred":
+                self._empty_title.set_text("No Favorites Yet")
+                self._empty_label.set_text("Star your best wallpapers to see them here")
+                self._empty_icon.set_markup('<span size="48000">\u2605</span>')
+                self._empty_hint.set_text("Tip: Press 'F' to Star")
             else:
                 self._empty_title.set_text("No Wallpapers Found")
                 dirs_text = ", ".join(_shorten_path(d) for d in self._wall_dirs)
                 self._empty_label.set_text(f"No valid images found in:\n{dirs_text}")
+                self._empty_icon.set_markup('<span size="48000">\U0001f5bc</span>')
+                self._empty_hint.set_text("\u2699 Open Settings")
 
-            if self.stack.get_visible_child_name() != "settings":
+            if not self._is_settings:
                 self.stack.set_visible_child_name("empty")
             return
 
-        if self.stack.get_visible_child_name() != "settings":
+        if not self._is_settings:
             self.stack.set_visible_child_name("grid")
-        self._load_idle_id = GLib.idle_add(self._load_next, priority=GLib.PRIORITY_LOW)
+
+        # Increase priority so it doesn't wait indefinitely
+        self._load_idle_id = GLib.idle_add(self._load_next, priority=GLib.PRIORITY_DEFAULT_IDLE)
 
     def _load_next(self):
         if not self._pending:
@@ -527,29 +703,71 @@ class WallpaperPicker(Gtk.Window):
         path = self._pending.pop(0)
 
         try:
-            pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(
-                path, THUMB_W, THUMB_H, False)
+            thumb_path = get_thumbnail(path)
+            pixbuf = GdkPixbuf.Pixbuf.new_from_file(thumb_path)
         except Exception:
             if not self._pending:
                 self._load_idle_id = None
             return bool(self._pending)
 
         display_name = _make_display_name(os.path.basename(path))
+        meta_text    = get_image_info(path)
 
         card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         card.get_style_context().add_class("card")
-        card.pack_start(Gtk.Image.new_from_pixbuf(pixbuf), False, False, 0)
+
+        # Overlay for floating metadata
+        overlay = Gtk.Overlay()
+        img = Gtk.Image.new_from_pixbuf(pixbuf)
+        overlay.add(img)
+
+        meta_lbl = Gtk.Label(label=meta_text)
+        meta_lbl.get_style_context().add_class("metadata-overlay")
+        meta_lbl.set_halign(Gtk.Align.END)
+        meta_lbl.set_valign(Gtk.Align.END)
+        meta_lbl.set_no_show_all(True)
+        overlay.add_overlay(meta_lbl)
+
+        # Star indicator overlay
+        star_lbl = Gtk.Label(label="\u2605")
+        star_lbl.get_style_context().add_class("star-indicator")
+        star_lbl.set_halign(Gtk.Align.START)
+        star_lbl.set_valign(Gtk.Align.START)
+        star_lbl.set_no_show_all(True)
+        is_fav = os.path.basename(path) in self._favorites
+        if is_fav:
+            star_lbl.show()
+        overlay.add_overlay(star_lbl)
+
+        card.pack_start(overlay, False, False, 0)
         card.pack_start(Gtk.Label(label=display_name), False, False, 0)
 
         child = Gtk.FlowBoxChild()
         child.set_halign(Gtk.Align.CENTER)
         child.set_valign(Gtk.Align.START)
         child.add(card)
+        child.set_has_tooltip(False) # We use our own overlay
 
         self._paths[child] = path
         self._names[child] = display_name.lower()
+        self._star_widgets[child] = star_lbl
 
         child.connect("button-press-event", self._on_child_click)
+
+        # Metadata ONLY for the highlighted (selected) wallpaper
+        def update_meta_visibility(*_):
+            if child.get_state_flags() & Gtk.StateFlags.SELECTED:
+                meta_lbl.show()
+            else:
+                meta_lbl.hide()
+            return False
+
+        child.connect("state-flags-changed", update_meta_visibility)
+
+        # Fallback tooltip for accessibility
+        tip = f"\u2605 [FAVORITE] | {meta_text}" if is_fav else meta_text
+        child.set_tooltip_text(tip)
+
         self.flowbox.add(child)
         child.show_all()
 
@@ -560,7 +778,8 @@ class WallpaperPicker(Gtk.Window):
         if not self._did_select:
             self._did_select = True
             self.flowbox.select_child(child)
-            GLib.idle_add(child.grab_focus)
+            if not self._is_settings:
+                GLib.idle_add(child.grab_focus)
 
         if self._pending:
             return True
@@ -597,6 +816,11 @@ class WallpaperPicker(Gtk.Window):
             return False
         GLib.idle_add(self._select_first_visible)
         return False
+
+    def _on_clear_search(self, _w, _e):
+        self.search_entry.set_text("")
+        self.search_entry.grab_focus()
+        return True
 
     def _select_first_visible(self):
         visible = self._get_visible_children()
@@ -639,6 +863,31 @@ class WallpaperPicker(Gtk.Window):
         self._show_context_menu(child, event)
         return True
 
+    def _toggle_favorite(self, child):
+        path = self._paths.get(child)
+        if not path:
+            return
+
+        fname = os.path.basename(path)
+        if fname in self._favorites:
+            self._favorites.remove(fname)
+            self._star_widgets[child].hide()
+        else:
+            self._favorites.add(fname)
+            self._star_widgets[child].show()
+
+        save_favorites(self._favorites)
+
+        # If we are in "Starred" mode, we need to refresh to hide/show correctly
+        if self.sort_combo.get_active_text() == "Starred":
+            self._on_sort_changed(self.sort_combo)
+        else:
+            # Otherwise just update the tooltip and star visibility
+            is_fav = fname in self._favorites
+            meta_text = get_image_info(path)
+            tip = f"\u2605 [FAVORITE] | {meta_text}" if is_fav else meta_text
+            child.set_tooltip_text(tip)
+
     def _show_context_menu(self, child, event):
         path = self._paths.get(child)
         if not path:
@@ -648,6 +897,13 @@ class WallpaperPicker(Gtk.Window):
         item_set.connect("activate", lambda _: self._on_pick(self.flowbox, child))
         menu.append(item_set)
         menu.append(Gtk.SeparatorMenuItem())
+
+        is_fav = os.path.basename(path) in self._favorites
+        fav_label = "Remove from Favorites" if is_fav else "Add to Favorites"
+        item_fav = Gtk.MenuItem(label=fav_label)
+        item_fav.connect("activate", lambda _: self._toggle_favorite(child))
+        menu.append(item_fav)
+
         item_reveal = Gtk.MenuItem(label="Reveal in File Manager")
         item_reveal.connect("activate",
                             lambda _: reveal_in_fm(os.path.dirname(path)))
@@ -676,6 +932,11 @@ class WallpaperPicker(Gtk.Window):
             return
         try:
             os.remove(path)
+            # Remove from favorites if it was starred
+            fname = os.path.basename(path)
+            if fname in self._favorites:
+                self._favorites.remove(fname)
+                save_favorites(self._favorites)
         except OSError:
             return
         if self._active_child == child:
@@ -730,14 +991,25 @@ class WallpaperPicker(Gtk.Window):
             if widget is not None and widget in self._paths:
                 visible = self._get_visible_children()
                 try:
-                    if visible.index(widget) < COLS:
+                    if visible.index(widget) < self._cols:
                         self.search_entry.grab_focus()
                         self.search_entry.set_position(-1)
                         return True
                 except ValueError:
                     pass
+        if kv == Gdk.KEY_f or kv == Gdk.KEY_F:
+            # Command key: only toggle if we aren't typing in a text field
+            if not self.search_entry.has_focus() and not self.sort_combo.has_focus():
+                widget = self.get_focus()
+                while widget is not None and not isinstance(widget, Gtk.FlowBoxChild):
+                    widget = widget.get_parent()
+                if widget is not None and widget in self._paths:
+                    self._toggle_favorite(widget)
+                    return True
+
         if not self.search_entry.has_focus() and not self.sort_combo.has_focus():
             if 0x20 <= kv <= 0x7E:
+                # Character key: focus search and append
                 self.search_entry.grab_focus()
                 self.search_entry.set_text(self.search_entry.get_text() + chr(kv))
                 self.search_entry.set_position(-1)
@@ -772,6 +1044,6 @@ class WallpaperPicker(Gtk.Window):
 
             geo = monitor.get_geometry()
             # Position relative to monitor origin
-            self.move(geo.x + (geo.width - WIN_WIDTH) // 2, geo.y + 50)
+            self.move(geo.x + (geo.width - self._win_width) // 2, geo.y + 50)
         except Exception:
             pass
