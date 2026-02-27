@@ -154,12 +154,35 @@ export default class WallpaperPickerExtension extends Extension {
       return;
     }
 
+    // Build a DESKTOP_STARTUP_ID using the X11 server timestamp from the
+    // last user input event. Mutter validates this timestamp server-side
+    // to decide whether FSP (Focus Stealing Prevention) applies.
+    const timestamp = global.get_current_time();
+    const startupId = `wallpaper-picker-${GLib.getpid()}-${timestamp}_TIME${timestamp}`;
+
     try {
-      const proc = new Gio.Subprocess({
-        argv: [binPath, ...args],
+      // SubprocessLauncher allows injecting env vars before the child starts.
+      const launcher = new Gio.SubprocessLauncher({
         flags: Gio.SubprocessFlags.NONE,
       });
-      proc.init(null);
+
+      // ── Startup notification ─────────────────────────────────────────────
+      // GTK3 reads DESKTOP_STARTUP_ID automatically and calls set_startup_id()
+      // internally, which sets _NET_STARTUP_ID on the X11 window — the signal
+      // Mutter uses to whitelist the window for focus and placement.
+      launcher.setenv("DESKTOP_STARTUP_ID", startupId, true);
+
+      // ── Stable backend ───────────────────────────────────────────────────
+      // Force X11 so window.move() semantics are consistent across sessions.
+      launcher.setenv("GDK_BACKEND", "x11", true);
+
+      // ── Suppress AT-SPI ──────────────────────────────────────────────────
+      // The Accessibility Bus creates a secondary D-Bus connection that can
+      // cause focus arbitration issues in long-running sessions.
+      launcher.setenv("NO_AT_BRIDGE", "1", true);
+      launcher.setenv("GTK_A11Y", "none", true);
+
+      const proc = launcher.spawnv([binPath, ...args]);
       await proc.wait_check_async(null);
     } catch (e) {
       if (!e.matches(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED)) {

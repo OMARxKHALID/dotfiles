@@ -3,6 +3,13 @@ import os
 import argparse
 import gi
 
+# ── Stabilise GDK/GTK environment ──────────────────────────────────────
+# These must be set BEFORE the first `import gi` / GTK display connection.
+os.environ.setdefault("GDK_BACKEND", "x11")
+os.environ.setdefault("NO_AT_BRIDGE", "1")
+os.environ.setdefault("GTK_A11Y",    "none")
+# ───────────────────────────────────────────────────────────────────────
+
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk
 

@@ -237,17 +237,64 @@ spinbutton button:hover {
 }
 
 .shuffle-btn:active,
-.shuffle-btn:backdrop {
+.shuffle-btn:backdrop,
+.back-btn:active,
+.back-btn:backdrop {
     background-color: rgba(50, 48, 47, 0.6);
     border-color: rgba(60, 56, 54, 0.5);
 }
 
+.back-btn {
+    background-color: rgba(60, 56, 54, 0.92);
+    color: #ebdbb2;
+    border: 1px solid rgba(80, 73, 69, 0.6);
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: bold;
+    min-height: 28px;
+    padding: 0 14px;
+    margin-right: 8px;
+    box-shadow: none;
+    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.back-btn:hover {
+    background-color: rgba(80, 73, 69, 0.8);
+    color: #ebdbb2;
+    border-color: #83a598;
+}
+
 /* ── Empty state ────────────────────────────────────────────────────────── */
-.empty {
-    color: #928374;
-    font-size: 14px;
+.empty-box {
+    padding: 60px 40px;
+}
+
+.empty-icon {
+    color: rgba(250, 189, 47, 0.4);
+    margin-bottom: 20px;
+}
+
+.empty-title {
+    color: #ebdbb2;
+    font-size: 18px;
+    font-weight: 800;
+    margin-bottom: 8px;
+}
+
+.empty-subtitle {
+    color: #a89984;
+    font-size: 13px;
     font-weight: 500;
-    padding: 40px;
+}
+
+.empty-hint {
+    color: #fabd2f;
+    font-size: 12px;
+    font-weight: 700;
+    margin-top: 24px;
+    padding: 6px 16px;
+    background-color: rgba(250, 189, 47, 0.1);
+    border-radius: 20px;
 }
 
 /* ── Settings page ──────────────────────────────────────────────────────── */
@@ -260,7 +307,10 @@ spinbutton button:hover {
 }
 
 .settings-row {
-    padding: 6px 16px;
+    padding: 10px 16px;
+    margin: 4px 16px;
+    background-color: rgba(40, 40, 40, 0.3);
+    border-radius: 8px;
 }
 
 .settings-hint {

@@ -33,6 +33,21 @@ class WallpaperPicker(Gtk.Window):
         self.set_decorated(False)
         self.set_size_request(WIN_WIDTH, -1)
 
+        # ── Startup Notification ─────────────────────────────────────────────
+        # Consume DESKTOP_STARTUP_ID passed by the extension.
+        startup_id = os.environ.get("DESKTOP_STARTUP_ID", "")
+        if startup_id:
+            self.set_startup_id(startup_id)
+
+        # ── Window Type Hint ─────────────────────────────────────────────────
+        # SPLASHSCREEN is the most effective hint for bypassing Mutter's
+        # Smart Placement and FSP.
+        self.set_type_hint(Gdk.WindowTypeHint.SPLASHSCREEN)
+
+        # ── Placement Opt-out ────────────────────────────────────────────────
+        # WindowPosition.NONE explicitly opts us OUT of smart placement.
+        self.set_position(Gtk.WindowPosition.NONE)
+
         # CSS
         provider = Gtk.CssProvider()
         provider.load_from_data(CSS.encode())
@@ -54,6 +69,7 @@ class WallpaperPicker(Gtk.Window):
         self._picture_mode = cfg.get("picture_mode", "zoom")
 
         # Runtime state
+        self._startup_id    = startup_id
         self._active_child  = None
         self._current       = get_current_wallpaper()
         self._paths         = {}   # FlowBoxChild → full path
@@ -66,14 +82,47 @@ class WallpaperPicker(Gtk.Window):
 
         self._build_ui()
         self.connect("destroy", self._on_destroy)
-        self.show_all()
-        self.present()
 
         if start_page == "settings":
             self._open_settings(None)
 
         self._load_images()
+
+        # ── Pre-positioning ──────────────────────────────────────────────────
+        # Call move() BEFORE show_all(). This sets the initial position hint
+        # that GTK sends to the Window Manager during the "map" request.
         self._center_on_screen()
+
+        self.show_all()
+        # ── Position after WM map ────────────────────────────────────────────
+        # Connect to map-event as a safety measure. If Mutter ignores the initial
+        # hint and applies Smart Placement, this will snap it back instantly.
+        self.connect("map-event", self._on_first_map)
+
+    def _get_startup_timestamp(self):
+        """Extracts the X server timestamp from the DESKTOP_STARTUP_ID."""
+        if not self._startup_id:
+            return 0
+        try:
+            # Format: uuid-pid-timestamp_TIME123456
+            if "_TIME" in self._startup_id:
+                return int(self._startup_id.split("_TIME")[-1])
+        except (ValueError, IndexError):
+            pass
+        return 0
+
+    def _on_first_map(self, widget, event):
+        """Fire exactly once after the WM has mapped and positioned the window."""
+        self._center_on_screen()
+        # Use the startup timestamp to bypass Focus Stealing Prevention
+        ts = self._get_startup_timestamp()
+        if ts > 0:
+            self.present_with_time(ts)
+        else:
+            self.present()
+
+        self.disconnect_by_func(self._on_first_map)
+        return False
 
     def _on_destroy(self, _w):
         for tid in (self._search_tid, self._load_idle_id):
@@ -98,6 +147,16 @@ class WallpaperPicker(Gtk.Window):
     def _build_header(self):
         self._header_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
 
+        # ── Left: Back Button & Title ────────────────────────────────────────
+        self._back_btn = Gtk.Button(label="\u2190 Back")
+        self._back_btn.get_style_context().add_class("back-btn")
+        self._back_btn.connect("clicked", lambda _: self._close_settings())
+        self._back_btn.set_valign(Gtk.Align.CENTER)
+        self._back_btn.set_margin_end(8)
+        self._back_btn.set_no_show_all(True) # Prevent show_all() from forcing it visible
+        self._back_btn.hide()
+        self._header_row.pack_start(self._back_btn, False, False, 0)
+
         self._header_label = Gtk.Label(label="Wallpaper Picker")
         self._header_label.get_style_context().add_class("header")
         self._header_label.set_xalign(0)
@@ -106,6 +165,7 @@ class WallpaperPicker(Gtk.Window):
         header_eb.connect("button-press-event", self._on_header_drag)
         self._header_row.pack_start(header_eb, True, True, 0)
 
+        # ── Right: Action Buttons ──────────────────────────────────────────
         self._shuffle_btn = Gtk.Button(label="\u21c4 Shuffle")
         self._shuffle_btn.get_style_context().add_class("shuffle-btn")
         self._shuffle_btn.set_tooltip_text("Apply a random wallpaper")
@@ -167,30 +227,59 @@ class WallpaperPicker(Gtk.Window):
         self.stack.add_named(scroll, "grid")
 
         empty_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        empty_box.get_style_context().add_class("empty-box")
         empty_box.set_valign(Gtk.Align.CENTER)
         empty_box.set_halign(Gtk.Align.CENTER)
         empty_box.set_size_request(-1, SCROLL_H)
 
         self._empty_icon = Gtk.Label()
-        self._empty_icon.set_markup('<span size="xx-large">\U0001f5bc</span>')
-        self._empty_icon.set_margin_bottom(10)
+        self._empty_icon.get_style_context().add_class("empty-icon")
+        self._empty_icon.set_markup('<span size="48000">\U0001f5bc</span>')
         empty_box.pack_start(self._empty_icon, False, False, 0)
 
-        self._empty_label = Gtk.Label(label="No wallpapers found")
-        self._empty_label.get_style_context().add_class("empty")
+        self._empty_title = Gtk.Label(label="No Wallpapers")
+        self._empty_title.get_style_context().add_class("empty-title")
+        empty_box.pack_start(self._empty_title, False, False, 0)
+
+        self._empty_label = Gtk.Label(label="Select a folder to get started")
+        self._empty_label.get_style_context().add_class("empty-subtitle")
         self._empty_label.set_justify(Gtk.Justification.CENTER)
         empty_box.pack_start(self._empty_label, False, False, 0)
 
-        empty_hint = Gtk.Label(label="Add folders in \u2699 Settings")
-        empty_hint.get_style_context().add_class("empty")
-        empty_box.pack_start(empty_hint, False, False, 0)
+        empty_hint_label = Gtk.Label(label="\u2699 Open Settings")
+        empty_hint_label.get_style_context().add_class("empty-hint")
+
+        empty_hint_eb = Gtk.EventBox()
+        empty_hint_eb.set_visible_window(False)
+        empty_hint_eb.add(empty_hint_label)
+        empty_hint_eb.connect("button-press-event", lambda _w, _e: self._open_settings(None))
+        # Cursor change on realize for GTK3 EventBox
+        empty_hint_eb.connect("realize", lambda w: w.get_window().set_cursor(
+            Gdk.Cursor.new_from_name(Gdk.Display.get_default(), "pointer")))
+
+        empty_box.pack_start(empty_hint_eb, False, False, 0)
 
         self.stack.add_named(empty_box, "empty")
 
-        no_results = Gtk.Label(label="No results match your search.")
-        no_results.get_style_context().add_class("empty")
-        no_results.set_size_request(-1, SCROLL_H)
-        self.stack.add_named(no_results, "no-results")
+        no_results_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        no_results_box.get_style_context().add_class("empty-box")
+        no_results_box.set_valign(Gtk.Align.CENTER)
+        no_results_box.set_halign(Gtk.Align.CENTER)
+
+        nr_icon = Gtk.Label()
+        nr_icon.get_style_context().add_class("empty-icon")
+        nr_icon.set_markup('<span size="48000">\U0001f50d</span>')
+        no_results_box.pack_start(nr_icon, False, False, 0)
+
+        nr_title = Gtk.Label(label="No Matches")
+        nr_title.get_style_context().add_class("empty-title")
+        no_results_box.pack_start(nr_title, False, False, 0)
+
+        no_results = Gtk.Label(label="Try a different search term")
+        no_results.get_style_context().add_class("empty-subtitle")
+        no_results_box.pack_start(no_results, False, False, 0)
+
+        self.stack.add_named(no_results_box, "no-results")
 
         self.stack.add_named(self._build_settings_page(), "settings")
 
@@ -309,11 +398,13 @@ class WallpaperPicker(Gtk.Window):
         self._header_label.set_text("Settings")
         self._shuffle_btn.hide()
         self._settings_btn.hide()
+        self._back_btn.show()
         self._controls.hide()
         self.stack.set_visible_child_name("settings")
 
     def _close_settings(self):
         self._header_label.set_text("Wallpaper Picker")
+        self._back_btn.hide()
         self._shuffle_btn.show()
         self._settings_btn.show()
         self._controls.show()
@@ -412,9 +503,16 @@ class WallpaperPicker(Gtk.Window):
         self._pending = all_paths
 
         if not self._pending:
-            dirs_text = ", ".join(_shorten_path(d) for d in self._wall_dirs) if self._wall_dirs else "none"
-            self._empty_label.set_text(f"No wallpapers found in:\n{dirs_text}")
-            self.stack.set_visible_child_name("empty")
+            if not self._wall_dirs:
+                self._empty_title.set_text("No Folders Added")
+                self._empty_label.set_text("Go to Settings to add your wallpaper directory")
+            else:
+                self._empty_title.set_text("No Wallpapers Found")
+                dirs_text = ", ".join(_shorten_path(d) for d in self._wall_dirs)
+                self._empty_label.set_text(f"No valid images found in:\n{dirs_text}")
+
+            if self.stack.get_visible_child_name() != "settings":
+                self.stack.set_visible_child_name("empty")
             return
 
         if self.stack.get_visible_child_name() != "settings":
@@ -654,10 +752,26 @@ class WallpaperPicker(Gtk.Window):
             display = Gdk.Display.get_default()
             if display is None:
                 return
-            monitor = display.get_primary_monitor() or display.get_monitor(0)
+
+            monitor = None
+            # Since we enforce GDK_BACKEND=x11, we can trust the pointer position
+            # to detect the active monitor without security-based (0,0) shielding.
+            seat = display.get_default_seat()
+            if seat:
+                pointer = seat.get_pointer()
+                if pointer:
+                    pos = pointer.get_position()
+                    x, y = pos[-2], pos[-1]
+                    monitor = display.get_monitor_at_point(x, y)
+
+            if monitor is None:
+                monitor = display.get_primary_monitor() or display.get_monitor(0)
+
             if monitor is None:
                 return
+
             geo = monitor.get_geometry()
-            self.move((geo.width - WIN_WIDTH) // 2, 50)
+            # Position relative to monitor origin
+            self.move(geo.x + (geo.width - WIN_WIDTH) // 2, geo.y + 50)
         except Exception:
             pass
