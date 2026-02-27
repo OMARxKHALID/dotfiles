@@ -75,13 +75,6 @@ alias u='sudo apt update && sudo apt upgrade -y'
 alias r='sudo apt remove --purge'
 alias ar='sudo apt autoremove'
 
-# Flatpak management
-alias fs='flatpak search'
-alias fi='flatpak install'
-alias fu='flatpak update'
-alias fr='flatpak uninstall'
-alias far='flatpak uninstall --unused'
-
 # Git shortcuts
 alias g='git'
 alias ga='git add'
