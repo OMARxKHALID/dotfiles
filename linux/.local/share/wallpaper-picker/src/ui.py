@@ -34,6 +34,11 @@ class WallpaperPicker(Gtk.Window):
         self.set_keep_above(True)
         self.set_skip_taskbar_hint(True)
         self.set_decorated(False)
+        # Root Cause Fix: Match the WM_CLASS with the .desktop file name for
+        # seamless Wayland focus and shell grouping.
+        GLib.set_prgname("wallpaper-picker")
+        self.set_wmclass("wallpaper-picker", "wallpaper-picker")
+        self.set_icon_name("wallpaper-picker")
 
         # Load config first to define dimensions
         cfg = _load_config()

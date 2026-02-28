@@ -13,7 +13,8 @@ import * as PopupMenu from "resource:///org/gnome/shell/ui/popupMenu.js";
 
 const BIN_NAME = "wallpaper-picker";
 const APP_ICON = "emblem-photos-symbolic";
-const SMALL_ICON_SIZE = 14;
+
+const SMALL_ICON_SIZE = 16;
 
 const Paths = {
   CONFIG_FILE: GLib.build_filenamev([
@@ -31,10 +32,12 @@ const Paths = {
 
 export default class WallpaperPickerExtension extends Extension {
   enable() {
+    if (this._button) return;
+
+    this._signalIds = [];
     this._button = new PanelMenu.Button(0.5, _("Wallpaper Picker"), false);
 
-    // Container for centering
-    let box = new St.BoxLayout({
+    const box = new St.BoxLayout({
       style_class: "panel-status-menu-box",
       x_expand: true,
       y_expand: true,
@@ -42,7 +45,6 @@ export default class WallpaperPickerExtension extends Extension {
       y_align: Clutter.ActorAlign.CENTER,
     });
 
-    // Main Panel Icon
     const icon = new St.Icon({
       icon_name: APP_ICON,
       style_class: "system-status-icon",
@@ -52,24 +54,33 @@ export default class WallpaperPickerExtension extends Extension {
 
     box.add_child(icon);
     this._button.add_child(box);
-
     this._buildMenu();
-
     Main.panel.addToStatusArea(this.uuid, this._button);
   }
 
   _buildMenu() {
-    // Menu layout configuration
     const menuItems = [
       {
         label: _("Pick Wallpaper"),
         icon: APP_ICON,
-        action: () => this._launchPicker(),
+        action: () => {
+          if (!this._hasValidConfig()) {
+            this._promptSettings();
+            return;
+          }
+          this._launchPicker();
+        },
       },
       {
         label: _("Shuffle Wallpaper"),
         icon: "media-playlist-shuffle-symbolic",
-        action: () => this._launchPicker(["--shuffle"]),
+        action: () => {
+          if (!this._hasValidConfig()) {
+            this._promptSettings();
+            return;
+          }
+          this._launchPicker(["--shuffle"]);
+        },
       },
       { separator: true },
       {
@@ -84,26 +95,40 @@ export default class WallpaperPickerExtension extends Extension {
       },
     ];
 
-    menuItems.forEach((item) => {
+    for (const item of menuItems) {
       if (item.separator) {
         this._button.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
-        return;
+        continue;
       }
 
       const menuItem = new PopupMenu.PopupImageMenuItem(item.label, item.icon);
 
-      // Apply the smaller icon size to the menu items as well
-      menuItem.get_child_at_index(0).icon_size = SMALL_ICON_SIZE;
+      const children = menuItem.get_children();
+      const iconChild = children.find((c) => c instanceof St.Icon);
+      if (iconChild) iconChild.set_icon_size(SMALL_ICON_SIZE);
 
-      menuItem.connect("activate", item.action);
+      const id = menuItem.connect("activate", item.action);
+      this._signalIds.push({ obj: menuItem, id });
       this._button.menu.addMenuItem(menuItem);
-    });
+    }
+  }
+
+  _hasValidConfig() {
+    const folder = this._getFolderFromConfig();
+    return folder !== null && folder !== undefined;
+  }
+
+  _promptSettings() {
+    Main.notify(
+      _("Wallpaper Picker"),
+      _("Please open Settings and select your Wallpapers directory first."),
+    );
+    this._launchPicker(["--settings"]);
   }
 
   _getBinaryPath() {
-    if (GLib.file_test(Paths.LOCAL_BIN, GLib.FileTest.IS_EXECUTABLE)) {
+    if (GLib.file_test(Paths.LOCAL_BIN, GLib.FileTest.IS_EXECUTABLE))
       return Paths.LOCAL_BIN;
-    }
     return GLib.find_program_in_path(BIN_NAME);
   }
 
@@ -111,22 +136,26 @@ export default class WallpaperPickerExtension extends Extension {
     let folderPath = this._getFolderFromConfig();
 
     if (!folderPath) {
-      const picturesDir =
-        GLib.get_user_special_dir(GLib.UserDirectory.DIRECTORY_PICTURES) ??
-        GLib.build_filenamev([GLib.get_home_dir(), "Pictures"]);
-      folderPath = GLib.build_filenamev([picturesDir, "Wallpapers"]);
-    }
-
-    const file = Gio.File.new_for_path(folderPath);
-    if (!file.query_exists(null)) {
-      this._notify(_("Folder Not Found"), folderPath);
+      this._promptSettings();
       return;
     }
 
+    let exists = false;
     try {
+      const file = Gio.File.new_for_path(folderPath);
+      exists = file.query_exists(null);
+
+      if (!exists) {
+        Main.notify(
+          _("Wallpaper Picker"),
+          `${_("Folder Not Found")}: ${folderPath}`,
+        );
+        return;
+      }
+
       Gio.AppInfo.launch_default_for_uri(file.get_uri(), null);
     } catch (e) {
-      this._notify(_("Open Error"), e.message);
+      console.error(`[${BIN_NAME}] Failed to open folder: ${e.message}`);
     }
   }
 
@@ -136,66 +165,69 @@ export default class WallpaperPickerExtension extends Extension {
       const [success, content] = GLib.file_get_contents(Paths.CONFIG_FILE);
       if (!success) return null;
       const config = JSON.parse(new TextDecoder().decode(content));
-      return config.wall_dirs && config.wall_dirs.length > 0
-        ? config.wall_dirs[0]
-        : null;
+
+      const dirs = config.wall_dirs;
+      if (!dirs?.length) return null;
+
+      return dirs[0];
     } catch (e) {
+      console.warn(`[${BIN_NAME}] Could not parse config: ${e.message}`);
       return null;
     }
   }
 
-  async _launchPicker(args = []) {
-    const binPath = this._getBinaryPath();
-    if (!binPath) {
-      this._notify(
-        _("Binary Not Found"),
-        _("Install 'wallpaper-picker' to use."),
-      );
-      return;
-    }
-
-    // Build a DESKTOP_STARTUP_ID using the X11 server timestamp from the
-    // last user input event. Mutter validates this timestamp server-side
-    // to decide whether FSP (Focus Stealing Prevention) applies.
-    const timestamp = global.get_current_time();
-    const startupId = `wallpaper-picker-${GLib.getpid()}-${timestamp}_TIME${timestamp}`;
-
+  _launchPicker(args = []) {
     try {
-      // SubprocessLauncher allows injecting env vars before the child starts.
-      const launcher = new Gio.SubprocessLauncher({
-        flags: Gio.SubprocessFlags.NONE,
-      });
+      const binPath = this._getBinaryPath();
 
-      // ── Startup notification ─────────────────────────────────────────────
-      // GTK3 reads DESKTOP_STARTUP_ID automatically and calls set_startup_id()
-      // internally, which sets _NET_STARTUP_ID on the X11 window — the signal
-      // Mutter uses to whitelist the window for focus and placement.
-      launcher.setenv("DESKTOP_STARTUP_ID", startupId, true);
-
-      // ── Stable backend ───────────────────────────────────────────────────
-      // Force X11 so window.move() semantics are consistent across sessions.
-      launcher.setenv("GDK_BACKEND", "x11", true);
-
-      // ── Suppress AT-SPI ──────────────────────────────────────────────────
-      // The Accessibility Bus creates a secondary D-Bus connection that can
-      // cause focus arbitration issues in long-running sessions.
-      launcher.setenv("NO_AT_BRIDGE", "1", true);
-      launcher.setenv("GTK_A11Y", "none", true);
-
-      const proc = launcher.spawnv([binPath, ...args]);
-      await proc.wait_check_async(null);
-    } catch (e) {
-      if (!e.matches(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED)) {
-        this._notify(_("Launch Error"), e.message);
+      if (!binPath) {
+        Main.notify(_("Wallpaper Picker"), _("Application not found."));
+        return;
       }
-    }
-  }
 
-  _notify(title, message) {
-    Main.notify(_("Wallpaper Picker"), `${title}: ${message}`);
+      let startupId = null;
+      try {
+        const appInfo = Gio.AppInfo.create_from_commandline(
+          binPath,
+          BIN_NAME,
+          Gio.AppInfoCreateFlags.SUPPORTS_STARTUP_NOTIFICATION,
+        );
+        const context = global.create_app_launch_context(
+          global.get_current_time(),
+          -1,
+        );
+        startupId = context.get_startup_notify_id(appInfo, []);
+      } catch (e) {
+        // Startup notification is best-effort; continue without it.
+      }
+
+      let env = null;
+      if (startupId) {
+        env = GLib.get_environ();
+        env = GLib.environ_setenv(env, "DESKTOP_STARTUP_ID", startupId, true);
+        env = GLib.environ_setenv(env, "XDG_ACTIVATION_TOKEN", startupId, true);
+      }
+
+      const [, pid] = GLib.spawn_async(
+        null,
+        [binPath, ...args],
+        env,
+        GLib.SpawnFlags.SEARCH_PATH | GLib.SpawnFlags.DO_NOT_REAP_CHILD,
+        null,
+      );
+
+      GLib.child_watch_add(GLib.PRIORITY_DEFAULT, pid, (_pid, _status) => {
+        GLib.spawn_close_pid(_pid);
+      });
+    } catch (e) {
+      console.error(`[${BIN_NAME}] Launch failed: ${e.message}`);
+    }
   }
 
   disable() {
+    for (const { obj, id } of this._signalIds ?? []) obj.disconnect(id);
+
+    this._signalIds = null;
     this._button?.destroy();
     this._button = null;
   }
