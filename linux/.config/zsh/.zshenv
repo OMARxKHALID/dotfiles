@@ -33,3 +33,4 @@ if [[ -f "$HOME/.nvm/alias/default" ]]; then
     [[ -d "$_nvm_dir/bin" ]] && path=("$_nvm_dir/bin" $path)
     unset _nvm_ver _nvm_dir
 fi
+. "$HOME/.cargo/env"

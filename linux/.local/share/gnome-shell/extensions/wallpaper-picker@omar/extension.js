@@ -185,28 +185,7 @@ export default class WallpaperPickerExtension extends Extension {
         return;
       }
 
-      let startupId = null;
-      try {
-        const appInfo = Gio.AppInfo.create_from_commandline(
-          binPath,
-          BIN_NAME,
-          Gio.AppInfoCreateFlags.SUPPORTS_STARTUP_NOTIFICATION,
-        );
-        const context = global.create_app_launch_context(
-          global.get_current_time(),
-          -1,
-        );
-        startupId = context.get_startup_notify_id(appInfo, []);
-      } catch (e) {
-        // Startup notification is best-effort; continue without it.
-      }
-
-      let env = null;
-      if (startupId) {
-        env = GLib.get_environ();
-        env = GLib.environ_setenv(env, "DESKTOP_STARTUP_ID", startupId, true);
-        env = GLib.environ_setenv(env, "XDG_ACTIVATION_TOKEN", startupId, true);
-      }
+      let env = GLib.get_environ();
 
       const [, pid] = GLib.spawn_async(
         null,
