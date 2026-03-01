@@ -242,7 +242,7 @@ class WallpaperPicker(Gtk.Window):
         self.flowbox.set_min_children_per_line(self._cols)
         self.flowbox.set_homogeneous(True)
         self.flowbox.set_selection_mode(Gtk.SelectionMode.SINGLE)
-        self.flowbox.set_activate_on_single_click(True)
+        self.flowbox.set_activate_on_single_click(False)
         self.flowbox.set_filter_func(self._filter_func)
         self.flowbox.connect("child-activated", self._on_pick)
 
@@ -718,8 +718,10 @@ class WallpaperPicker(Gtk.Window):
         display_name = _make_display_name(os.path.basename(path))
         meta_text    = get_image_info(path)
 
-        card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        card.get_style_context().add_class("card")
+        card = Gtk.EventBox()
+        card_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        card_box.get_style_context().add_class("card")
+        card.add(card_box)
 
         # Overlay for floating metadata
         overlay = Gtk.Overlay()
@@ -744,8 +746,8 @@ class WallpaperPicker(Gtk.Window):
             star_lbl.show()
         overlay.add_overlay(star_lbl)
 
-        card.pack_start(overlay, False, False, 0)
-        card.pack_start(Gtk.Label(label=display_name), False, False, 0)
+        card_box.pack_start(overlay, False, False, 0)
+        card_box.pack_start(Gtk.Label(label=display_name), False, False, 0)
 
         child = Gtk.FlowBoxChild()
         child.set_halign(Gtk.Align.CENTER)
@@ -757,7 +759,7 @@ class WallpaperPicker(Gtk.Window):
         self._names[child] = display_name.lower()
         self._star_widgets[child] = star_lbl
 
-        child.connect("button-press-event", self._on_child_click)
+        card.connect("button-press-event", lambda w, e: self._on_child_click(child, e))
 
         # Metadata ONLY for the highlighted (selected) wallpaper
         def update_meta_visibility(*_):
@@ -863,10 +865,20 @@ class WallpaperPicker(Gtk.Window):
         adj.clamp_page(alloc.y, alloc.y + alloc.height)
 
     def _on_child_click(self, child, event):
-        if event.button != 3:
-            return False
-        self._show_context_menu(child, event)
-        return True
+        if event.button == 3:
+            # Select the child so the UI updates
+            self.flowbox.select_child(child)
+            child.grab_focus()
+            self._show_context_menu(child, event)
+            return True
+        elif event.button == 1:
+            # We must explicitly select the child and pick it
+            self.flowbox.select_child(child)
+            child.grab_focus()
+            self._on_pick(self.flowbox, child)
+            return True
+        return False
+
 
     def _toggle_favorite(self, child):
         path = self._paths.get(child)
@@ -904,7 +916,7 @@ class WallpaperPicker(Gtk.Window):
         menu.append(Gtk.SeparatorMenuItem())
 
         is_fav = os.path.basename(path) in self._favorites
-        fav_label = "Remove from Favorites" if is_fav else "Add to Favorites"
+        fav_label = "[F] Remove from Favorites" if is_fav else "[F] Add to Favorites"
         item_fav = Gtk.MenuItem(label=fav_label)
         item_fav.connect("activate", lambda _: self._toggle_favorite(child))
         menu.append(item_fav)
@@ -913,7 +925,7 @@ class WallpaperPicker(Gtk.Window):
         item_reveal.connect("activate",
                             lambda _: reveal_in_fm(os.path.dirname(path)))
         menu.append(item_reveal)
-        item_delete = Gtk.MenuItem(label="Delete File\u2026")
+        item_delete = Gtk.MenuItem(label="[D] Delete File\u2026")
         item_delete.connect("activate", lambda _: self._confirm_delete(child, path))
         menu.append(item_delete)
         menu.show_all()
@@ -1010,6 +1022,16 @@ class WallpaperPicker(Gtk.Window):
                     widget = widget.get_parent()
                 if widget is not None and widget in self._paths:
                     self._toggle_favorite(widget)
+                    return True
+        if kv == Gdk.KEY_d or kv == Gdk.KEY_D:
+            if not self.search_entry.has_focus() and not self.sort_combo.has_focus():
+                widget = self.get_focus()
+                while widget is not None and not isinstance(widget, Gtk.FlowBoxChild):
+                    widget = widget.get_parent()
+                if widget is not None and widget in self._paths:
+                    path = self._paths.get(widget)
+                    if path:
+                        self._confirm_delete(widget, path)
                     return True
 
         if not self.search_entry.has_focus() and not self.sort_combo.has_focus():
