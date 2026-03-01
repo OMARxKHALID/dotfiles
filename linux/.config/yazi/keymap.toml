@@ -1,0 +1,80 @@
+# Appearance
+[[manager.prepend_keymap]]
+on   = [ "." ]
+run  = "hidden toggle"
+desc = "Toggle hidden files"
+
+# File operations
+[[manager.prepend_keymap]]
+on   = [ "a" ]
+run  = "create"
+desc = "Create a file or directory (end with / for directory)"
+
+[[manager.prepend_keymap]]
+on   = [ "r" ]
+run  = "rename --cursor=before_ext"
+desc = "Rename a file or directory"
+
+[[manager.prepend_keymap]]
+on   = [ "d" ]
+run  = "remove --trash"
+desc = "Move to trash"
+
+[[manager.prepend_keymap]]
+on   = [ "D" ]
+run  = "remove"
+desc = "Permanently delete"
+
+# Clipboard
+[[manager.prepend_keymap]]
+on   = [ "y" ]
+run  = "copy"
+desc = "Copy the selected files"
+
+[[manager.prepend_keymap]]
+on   = [ "x" ]
+run  = "cut"
+desc = "Cut the selected files"
+
+[[manager.prepend_keymap]]
+on   = [ "p" ]
+run  = "paste"
+desc = "Paste the files"
+
+[[manager.prepend_keymap]]
+on   = [ "P" ]
+run  = "paste --force"
+desc = "Paste the files (overwrite)"
+
+# Search / Filter
+[[manager.prepend_keymap]]
+on   = [ "f" ]
+run  = "filter --smart"
+desc = "Filter files (fuzzy)"
+
+[[manager.prepend_keymap]]
+on   = [ "/" ]
+run  = "search fd"
+desc = "Search files using fd"
+
+# Utilities
+[[manager.prepend_keymap]]
+on   = [ "T" ]
+run  = "shell --block --confirm 'dragon -x \"$@\"'"
+desc = "Drag and drop (requires dragon-drag-and-drop)"
+
+[[manager.prepend_keymap]]
+on   = [ "s" ]
+run  = "shell --block --confirm $SHELL"
+desc = "Open shell in current directory"
+
+
+[[mgr.prepend_keymap]]
+on   = "+"
+run  = "plugin zoom 1"
+desc = "Zoom in hovered file"
+
+[[mgr.prepend_keymap]]
+on   = "-"
+run  = "plugin zoom -1"
+desc = "Zoom out hovered file"

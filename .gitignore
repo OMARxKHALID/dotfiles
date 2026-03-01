@@ -1,6 +1,44 @@
-# Secrets (API keys, tokens, etc.)
+# --- Secrets & Sensitive Data ---
 .zsh_secrets
+.bash_history
+.zsh_history
+*.key
+*.pem
+.env*
+backup*/
+.netrc
+.ssh/
 
-# OS files
+# --- Temporary & Dynamic Files ---
+*~
+*.swp
+*.tmp
+*.bak
+.zcompdump*
+.nfs*
 .DS_Store
+
+# --- OS Specific ---
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
 Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# --- Tool Specific ---
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+.idea/
+.serverless/
+**/node_modules/
+dist/
+build/
+
+# --- Plugin Management ---
+**/plugins/
+**/flavors/
+**/.venv/
+**/node_modules/

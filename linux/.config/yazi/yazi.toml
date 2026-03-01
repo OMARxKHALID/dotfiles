@@ -1,0 +1,95 @@
+"$schema" = "https://yazi-rs.github.io/schemas/yazi.json"
+
+# Manager
+[mgr]
+border_style = "rounded"
+ratio          = [2, 4, 6]
+sort_by        = "natural"
+sort_dir_first = true
+show_hidden    = false
+
+[preview]
+tab_size = 2
+max_height = 1080
+max_width = 1080
+image_quality = 90
+cache_dir = ""
+
+# Openers
+[opener]
+folder = [
+  { run = 'xdg-open "$@"', orphan = true, desc = "XDG Open", for = "linux" },
+  { run = 'nautilus "$1"', orphan = true, desc = "Nautilus", for = "linux" },
+  { run = 'kitty "$@"',    orphan = true, desc = "Kitty",    for = "linux" },
+]
+
+text = [
+  { run = 'nano "$@"',     block = true,  desc = "Nano",     for = "linux" },
+  { run = 'xdg-open "$@"', orphan = true, desc = "XDG Open", for = "linux" },
+]
+
+document = [
+  { run = 'xdg-open "$@"',    orphan = true, desc = "XDG Open",    for = "linux" },
+  { run = 'evince "$@"',      orphan = true, desc = "Evince",      for = "linux" },
+  { run = 'libreoffice "$@"', orphan = true, desc = "LibreOffice", for = "linux" },
+]
+
+image = [
+  { run = 'xdg-open "$@"',                    orphan = true, desc = "XDG Open", for = "linux" },
+  { run = 'flatpak run org.gnome.gThumb "$@"', orphan = true, desc = "gThumb",   for = "linux" },
+]
+
+video = [
+  { run = 'xdg-open "$@"',                      orphan = true, desc = "XDG Open",               for = "linux" },
+  { run = 'flatpak run org.gnome.Showtime "$@"', orphan = true, desc = "Showtime (GNOME Video)", for = "linux" },
+]
+
+audio = [
+  { run = 'xdg-open "$@"',                      orphan = true, desc = "XDG Open",               for = "linux" },
+  { run = 'flatpak run org.gnome.Showtime "$@"', orphan = true, desc = "Showtime (GNOME Audio)", for = "linux" },
+]
+
+fallback = [
+  { run = 'xdg-open "$@"', orphan = true, desc = "XDG Open", for = "linux" },
+]
+
+# Rules
+[open]
+rules = [
+  { url = "*/", use = "folder" },
+
+  # Text files
+  { mime = "text/*",            use = "text" },
+  { mime = "inode/x-empty",      use = "text" },
+  { mime = "application/json",   use = "text" },
+
+  # Media - Images
+  { mime = "image/*",           use = "image" },
+
+  # Media - Video
+  { mime = "video/*",                      use = "video" },
+  { mime = "application/octet-stream",     use = "video" },
+  { name = "*.{mkv,mp4,avi,mov,webm}",      use = "video" },
+
+  # Media - Audio
+  { mime = "audio/*",           use = "audio" },
+
+  # Documents
+  { mime = "application/pdf",               use = "document" },
+  { mime = "application/epub+zip",          use = "document" },
+  { mime = "application/x-mobipocket-ebook", use = "document" },
+
+  # Fallback
+  { mime = "*", use = "fallback" },
+]
+
+# Fetchers
+[[plugin.prepend_fetchers]]
+id   = "git"
+url  = "*"
+run  = "git"
+
+[[plugin.prepend_fetchers]]
+id   = "git"
+url  = "*/"
+run  = "git"

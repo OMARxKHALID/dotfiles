@@ -56,6 +56,7 @@ cp -r linux/.config/terminal ~/.config/
 
 ## Tools
 
+- **[yazi](https://github.com/sxyazi/yazi)** — blazing fast terminal file manager
 - **[zinit](https://github.com/zdharma-continuum/zinit)** — plugin manager (auto-installs)
 - **[Powerlevel10k](https://github.com/romkatv/powerlevel10k)** — prompt theme
 - **[fzf](https://github.com/junegunn/fzf)** — fuzzy finder (Ctrl+R for history)

@@ -24,6 +24,14 @@ alias fgrep='fgrep --color=auto'
 alias egrep='egrep --color=auto'
 
 # Shortcuts
+function y() {
+	local tmp="$(mktemp -t "yazi-cwd.XXXXXX")"
+	yazi "$@" --cwd-file="$tmp"
+	if cwd="$(cat -- "$tmp")" && [ -n "$cwd" ] && [ "$cwd" != "$PWD" ]; then
+		builtin cd -- "$cwd"
+	fi
+	rm -f -- "$tmp"
+}
 alias c='clear'
 alias cls='clear'
 alias h='history'
@@ -89,3 +97,6 @@ alias df='df -h'     # Human-readable disk usage
 alias free='free -m' # Memory in MB
 alias ports='netstat -tulanp'
 alias myip='curl -s https://ifconfig.me && echo'
+
+# Sync
+alias sync='~/Dev/dotfiles/linux/install.sh'

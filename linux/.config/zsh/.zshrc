@@ -45,7 +45,6 @@ CORRECT_IGNORE='.*'
 setopt autocd correct no_beep
 
 # Styling
-(( $+commands[dircolors] )) && eval "$(dircolors -b)"
 zstyle ':completion:*' matcher-list 'm:{a-z}={A-Za-z}'
 zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"
 zstyle ':completion:*' menu no
@@ -89,3 +88,7 @@ zinit light zsh-users/zsh-syntax-highlighting
 
 # P10k theme
 [[ ! -f "$ZDOTDIR/.p10k.zsh" ]] || source "$ZDOTDIR/.p10k.zsh"
+
+# dircolors
+test -r ~/.config/dircolors && eval "$(dircolors -b ~/.config/dircolors)" || \
+  eval "$(dircolors -b)"
