@@ -15,11 +15,8 @@ My development environment configs for Windows and Linux.
     ├── .profile      # Login env for Bash/GDM
     ├── .bashrc       # Bash interactive config
     ├── .local/
-    │   ├── bin/
-    │   │   ├── switch-wallpaper   # Random wallpaper switcher
-    │   │   └── wallpaper-picker   # Visual wallpaper picker (GTK)
     │   └── share/gnome-shell/extensions/
-    │       └── wallpaper-picker@omar/  # Top-bar extension
+    │       └── wallpaper-picker@omarxkhalid.github.io/
     └── .config/
         ├── aliasrc   # Shared aliases (Bash + Zsh)
         ├── bat/
@@ -28,6 +25,8 @@ My development environment configs for Windows and Linux.
         │   └── kitty.conf         # Kitty terminal configuration
         ├── terminal/
         │   └── tcs-gruvbox.dconf  # GNOME Terminal color scheme
+        ├── yazi/         # Yazi file manager configuration
+        ├── dircolors     # LS_COLORS configuration
         └── zsh/
             ├── .zshenv   # Zsh environment (XDG, PATH)
             ├── .zshrc    # Zsh interactive (plugins, prompt)

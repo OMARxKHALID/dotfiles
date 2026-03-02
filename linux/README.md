@@ -1,24 +1,22 @@
 # Linux Dotfiles
 
-Zsh + Bash shell config with Powerlevel10k, zinit, and fzf.
+Zsh + Bash shell with kitty terminal config with Powerlevel10k, zinit, bat, eza, zoxide, yazi and fzf.
 
 ## What's Here
 
-| File                                                         | What it does                                                 |
-| ------------------------------------------------------------ | ------------------------------------------------------------ |
-| `.zshenv`                                                    | Bootstrap — sets ZDOTDIR, sources the real config            |
-| `.profile`                                                   | Login environment for Bash and display manager (XDG, EDITOR) |
-| `.bashrc`                                                    | Bash interactive config (history, prompt, completion)        |
-| `.config/aliasrc`                                            | Shared aliases used by both Bash and Zsh                     |
-| `.local/bin/switch-wallpaper`                                | Random wallpaper switcher (Alt+W)                            |
-| `.local/bin/wallpaper-picker`                                | Visual wallpaper picker with thumbnails (Alt+P)              |
-| `.local/share/gnome-shell/extensions/wallpaper-picker@omar/` | Top-bar wallpaper picker extension                           |
-| `.config/zsh/.zshenv`                                        | Zsh environment (XDG dirs, PATH, defaults)                   |
-| `.config/zsh/.zshrc`                                         | Zsh interactive (zinit plugins, completion, history, fzf)    |
-| `.config/zsh/.p10k.zsh`                                      | Powerlevel10k prompt theme                                   |
-| `.config/kitty/kitty.conf`                                   | Kitty terminal configuration                                 |
-| `.config/terminal/tcs-gruvbox.dconf`                         | GNOME Terminal color scheme                                  |
-| `.config/bat/config`                                         | Bat configuration                                            |
+| File                                                                          | What it does                                                 |
+| ----------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| `.zshenv`                                                                     | Bootstrap — sets ZDOTDIR, sources the real config            |
+| `.profile`                                                                    | Login environment for Bash and display manager (XDG, EDITOR) |
+| `.bashrc`                                                                     | Bash interactive config (history, prompt, completion)        |
+| `.config/aliasrc`                                                             | Shared aliases used by both Bash and Zsh                     |
+| `.local/share/gnome-shell/extensions/wallpaper-picker@omarxkhalid.github.io/` | Top-bar wallpaper picker extension                           |
+| `.config/zsh/`                                                                | Zsh environment and interactive configuration                |
+| `.config/kitty/`                                                              | Kitty terminal configuration                                 |
+| `.config/terminal/`                                                           | GNOME Terminal color scheme (Gruvbox)                        |
+| `.config/bat/`                                                                | Bat (cat replacement) configuration                          |
+| `.config/yazi/`                                                               | Yazi terminal file manager configuration                     |
+| `.config/dircolors`                                                           | LS_COLORS configuration                                      |
 
 ## How Shell Startup Works
 
@@ -33,22 +31,11 @@ Both:  → ~/.config/aliasrc (shared aliases)
 1. Install zsh: `sudo apt install zsh`
 2. Set zsh as default: `chsh -s $(which zsh)`
 3. Install [JetBrains Mono Nerd Font](https://www.nerdfonts.com/font-downloads)
-4. Copy files to their locations:
+4. Use the installation script to symlink everything:
 
 ```bash
-cp linux/.zshenv ~/
-cp linux/.profile ~/
-cp linux/.bashrc ~/
-cp linux/.local/bin/switch-wallpaper ~/.local/bin/
-cp linux/.local/bin/wallpaper-picker ~/.local/bin/
-chmod +x ~/.local/bin/switch-wallpaper ~/.local/bin/wallpaper-picker
-cp -r linux/.local/share/gnome-shell/extensions/wallpaper-picker@omar \
-  ~/.local/share/gnome-shell/extensions/
-cp -r linux/.config/zsh ~/.config/
-cp linux/.config/aliasrc ~/.config/
-cp -r linux/.config/bat ~/.config/
-cp -r linux/.config/kitty ~/.config/
-cp -r linux/.config/terminal ~/.config/
+chmod +x linux/install.sh
+./linux/install.sh
 ```
 
 5. Load terminal theme: `dconf load /org/gnome/terminal/legacy/profiles:/:b1dcc9dd-5262-4d8d-a863-c897e6d979b9/ < ~/.config/terminal/tcs-gruvbox.dconf`

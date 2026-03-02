@@ -44,14 +44,8 @@ link_file "$SCRIPT_DIR/.zshenv" "$HOME/.zshenv"
 link_file "$SCRIPT_DIR/.profile" "$HOME/.profile"
 link_file "$SCRIPT_DIR/.bashrc" "$HOME/.bashrc"
 
-# --- Scripts & Binaries ---
-link_file "$SCRIPT_DIR/.local/bin/switch-wallpaper" "$HOME/.local/bin/switch-wallpaper"
-link_file "$SCRIPT_DIR/.local/bin/wallpaper-picker" "$HOME/.local/bin/wallpaper-picker"
-chmod +x "$SCRIPT_DIR/.local/bin/switch-wallpaper"
-chmod +x "$SCRIPT_DIR/.local/bin/wallpaper-picker"
-
 # --- GNOME Extensions ---
-link_file "$SCRIPT_DIR/.local/share/gnome-shell/extensions/wallpaper-picker@omar" "$HOME/.local/share/gnome-shell/extensions/wallpaper-picker@omar"
+link_file "$SCRIPT_DIR/.local/share/gnome-shell/extensions/wallpaper-picker@omarxkhalid.github.io" "$HOME/.local/share/gnome-shell/extensions/wallpaper-picker@omarxkhalid.github.io"
 
 # --- Config Directories ---
 link_file "$SCRIPT_DIR/.config/zsh" "$HOME/.config/zsh"
