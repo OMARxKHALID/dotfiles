@@ -4,19 +4,19 @@ Zsh + Bash shell with kitty terminal config with Powerlevel10k, zinit, bat, eza,
 
 ## What's Here
 
-| File                                                                          | What it does                                                 |
-| ----------------------------------------------------------------------------- | ------------------------------------------------------------ |
-| `.zshenv`                                                                     | Bootstrap — sets ZDOTDIR, sources the real config            |
-| `.profile`                                                                    | Login environment for Bash and display manager (XDG, EDITOR) |
-| `.bashrc`                                                                     | Bash interactive config (history, prompt, completion)        |
-| `.config/aliasrc`                                                             | Shared aliases used by both Bash and Zsh                     |
-| `.local/share/gnome-shell/extensions/wallpaper-picker@omarxkhalid.github.io/` | Top-bar wallpaper picker extension                           |
-| `.config/zsh/`                                                                | Zsh environment and interactive configuration                |
-| `.config/kitty/`                                                              | Kitty terminal configuration                                 |
-| `.config/terminal/`                                                           | GNOME Terminal color scheme (Gruvbox)                        |
-| `.config/bat/`                                                                | Bat (cat replacement) configuration                          |
-| `.config/yazi/`                                                               | Yazi terminal file manager configuration                     |
-| `.config/dircolors`                                                           | LS_COLORS configuration                                      |
+| File              | What it does                                                 |
+| ----------------- | ------------------------------------------------------------ |
+| `.zshenv`         | Bootstrap — sets ZDOTDIR, sources the real config            |
+| `.profile`        | Login environment for Bash and display manager (XDG, EDITOR) |
+| `.bashrc`         | Bash interactive config (history, prompt, completion)        |
+| `.config/aliasrc` | Shared aliases used by both Bash and Zsh                     |
+
+| `.config/zsh/` | Zsh environment and interactive configuration |
+| `.config/kitty/` | Kitty terminal configuration |
+| `.config/terminal/` | GNOME Terminal color scheme (Gruvbox) |
+| `.config/bat/` | Bat (cat replacement) configuration |
+| `.config/yazi/` | Yazi terminal file manager configuration |
+| `.config/dircolors` | LS_COLORS configuration |
 
 ## How Shell Startup Works
 

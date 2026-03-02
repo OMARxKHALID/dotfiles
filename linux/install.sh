@@ -44,8 +44,6 @@ link_file "$SCRIPT_DIR/.zshenv" "$HOME/.zshenv"
 link_file "$SCRIPT_DIR/.profile" "$HOME/.profile"
 link_file "$SCRIPT_DIR/.bashrc" "$HOME/.bashrc"
 
-# --- GNOME Extensions ---
-link_file "$SCRIPT_DIR/.local/share/gnome-shell/extensions/wallpaper-picker@omarxkhalid.github.io" "$HOME/.local/share/gnome-shell/extensions/wallpaper-picker@omarxkhalid.github.io"
 
 # --- Config Directories ---
 link_file "$SCRIPT_DIR/.config/zsh" "$HOME/.config/zsh"

@@ -1,9 +1,0 @@
-{
-  "name": "Wallpaper Picker",
-  "description": "Pick wallpapers from the top bar",
-  "uuid": "wallpaper-picker@omarxkhalid.github.io",
-  "gettext-domain": "wallpaper-picker@omarxkhalid.github.io",
-  "shell-version": ["46", "47", "48"],
-  "version": 1,
-  "url": "https://github.com/OMARxKHALID/dotfiles"
-}

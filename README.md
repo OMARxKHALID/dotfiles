@@ -14,9 +14,7 @@ My development environment configs for Windows and Linux.
     ├── .zshenv       # Bootstrap (sets ZDOTDIR)
     ├── .profile      # Login env for Bash/GDM
     ├── .bashrc       # Bash interactive config
-    ├── .local/
-    │   └── share/gnome-shell/extensions/
-    │       └── wallpaper-picker@omarxkhalid.github.io/
+
     └── .config/
         ├── aliasrc   # Shared aliases (Bash + Zsh)
         ├── bat/
