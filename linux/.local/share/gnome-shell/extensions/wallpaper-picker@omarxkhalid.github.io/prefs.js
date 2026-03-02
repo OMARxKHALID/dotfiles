@@ -18,11 +18,13 @@ import {
   setWallpaper,
   getImagesAsync,
   getImageInfo,
-  getThumbnail,
+  getThumbnailAsync,
   getCacheInfoAsync,
   clearCacheAsync,
   makeDisplayName,
   shortenPath,
+  fuzzyMatch,
+  flushStats,
   DEFAULT_WALL_DIR,
   THUMB_W,
   THUMB_H,
@@ -34,22 +36,59 @@ import {
 
 const CARD_CSS = `
   .wp-card {
-    border-radius: 10px;
+    border-radius: 12px;
     border: 2px solid transparent;
-    padding: 4px;
-    transition: border-color 200ms, background-color 200ms;
+    padding: 2px;
+    transition: all 250ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
   }
-  .wp-card:hover { border-color: @accent_color; }
-  .wp-card.active {
+  .wp-card:hover {
     border-color: @accent_color;
-    background-color: alpha(@accent_color, 0.12);
+    transform: scale(1.02);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
   }
-  .wp-card .wp-name { font-size: 11px; font-weight: 600; padding: 4px 2px 2px; }
-  .wp-star  { font-size: 16px; color: @accent_color; padding: 4px 6px; }
-  .wp-meta  { font-size: 10px; padding: 2px 6px; border-radius: 4px; background-color: alpha(black,0.55); color: white; }
-  .wp-empty-icon  { opacity: 0.4; margin-bottom: 16px; }
+  .wp-card.active {
+    border: 2px solid @accent_color;
+    background-color: alpha(@accent_color, 0.15);
+    box-shadow: 0 0 0 2px alpha(@accent_color, 0.3);
+  }
+  flowboxchild {
+    transition: all 200ms ease;
+  }
+  flowboxchild:focus, flowboxchild:active { outline: none; }
+  flowboxchild:focus .wp-card {
+    border: 2px dashed @accent_color;
+    transform: scale(1.02);
+  }
+  .wp-card .wp-name {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 6px 4px 4px;
+    color: alpha(@window_fg_color, 0.8);
+  }
+  .wp-star  { font-size: 16px; color: #f5c211; padding: 4px 6px; }
+  .wp-meta  {
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    background-color: alpha(black, 0.65);
+    color: white;
+    font-weight: bold;
+  }
+  .wp-empty-icon  { font-size: 64px; opacity: 0.3; margin-bottom: 16px; }
   .wp-empty-title { font-size: 18px; font-weight: 800; margin-bottom: 6px; }
-  .wp-empty-sub   { font-size: 13px; opacity: 0.7; }
+  .wp-delete-label {
+    color: @error_color;
+    font-weight: 600;
+  }
+  .wp-delete-button:hover {
+    background-color: alpha(@error_color, 0.15);
+  }
+  .hide-scrollbar scrollbar {
+    opacity: 0;
+    margin: 0;
+    padding: 0;
+  }
 `;
 
 const SORT_MODES = ["A-Z", "Starred", "Newest", "Most Used", "Recent"];
@@ -80,17 +119,21 @@ export default class WallpaperPickerPreferences extends ExtensionPreferences {
     this._queryCache = "";
     this._activeSigId = null;
 
-    window.set_default_size(800, 700);
+    window.set_default_size(720, 720);
     window.set_modal(true);
 
-    window.add(this._buildWallpapersPage());
-    window.add(this._buildFoldersPage());
-    window.add(this._buildDisplayPage());
-    window.add(this._buildStoragePage());
+    this._pages = [
+      this._buildWallpapersPage(),
+      this._buildFoldersPage(),
+      this._buildDisplayPage(),
+      this._buildStoragePage(),
+    ];
+    this._pages.forEach((p) => window.add(p));
 
     window.connect("close-request", () => {
       this._clearTimers();
       this._disconnectActiveSig();
+      flushStats();
       return false;
     });
 
@@ -114,7 +157,37 @@ export default class WallpaperPickerPreferences extends ExtensionPreferences {
       });
     });
 
+    const winKeyCtrl = new Gtk.EventControllerKey();
+    winKeyCtrl.connect("key-pressed", (_c, keyval) => {
+      // Only block 'M' if we are explicitly typing in the search bar.
+      if (this._window.get_focus() === this._searchEntry) return false;
+
+      if (keyval === Gdk.KEY_m || keyval === Gdk.KEY_M) {
+        this._cyclePages();
+        return true; // Stop event so it doesn't reach SpinRows/etc
+      }
+      return false;
+    });
+    window.add_controller(winKeyCtrl);
+
     this._loadImages();
+  }
+
+  _cyclePages() {
+    if (!this._window || !this._pages) return;
+    const current = this._window.visible_page;
+    const idx = this._pages.indexOf(current);
+    const nextIdx = (idx + 1) % this._pages.length;
+    const nextPage = this._pages[nextIdx];
+
+    this._window.visible_page = nextPage;
+
+    // We explicitly focus the page, but use a small idle delay to override
+    // Adwaita's internal "auto-focus first child" logic.
+    GLib.idle_add(GLib.PRIORITY_DEFAULT, () => {
+      nextPage.grab_focus();
+      return GLib.SOURCE_REMOVE;
+    });
   }
 
   _focusGrid() {
@@ -185,7 +258,8 @@ export default class WallpaperPickerPreferences extends ExtensionPreferences {
 
     this._searchEntry = new Gtk.SearchEntry({
       hexpand: true,
-      placeholder_text: "Filter wallpapers…",
+      width_request: 480,
+      placeholder_text: "Filter wallpapers… (S/W)",
     });
     this._searchEntry.connect("search-changed", () => this._onSearchChanged());
     // Enter in search jumps focus to the grid — standard GTK4 SearchEntry UX.
@@ -195,6 +269,7 @@ export default class WallpaperPickerPreferences extends ExtensionPreferences {
     this._sortDrop = new Gtk.DropDown({
       model: new Gtk.StringList({ strings: SORT_MODES }),
       selected: DEFAULT_SORT_IDX,
+      width_request: 140,
     });
     GLib.idle_add(GLib.PRIORITY_DEFAULT, () => {
       this._sortDrop.connect("notify::selected", () =>
@@ -242,10 +317,33 @@ export default class WallpaperPickerPreferences extends ExtensionPreferences {
 
     const keyCtrl = new Gtk.EventControllerKey();
     keyCtrl.connect("key-pressed", (_c, keyval) => {
+      if (keyval === Gdk.KEY_s || keyval === Gdk.KEY_S) {
+        this._searchEntry.grab_focus();
+        return true;
+      }
+      if (keyval === Gdk.KEY_w || keyval === Gdk.KEY_W) {
+        if (this._activeChild) {
+          this._activeChild.grab_focus();
+          this._activeChild.select_child?.(this._activeChild); // Ensure visual selection if needed
+          return true;
+        }
+      }
+
       const focused = this._flowBox.get_focus_child();
       if (!focused) return false;
+
       if (keyval === Gdk.KEY_f || keyval === Gdk.KEY_F) {
         this._toggleFavorite(focused);
+        return true;
+      }
+      if (keyval === Gdk.KEY_o || keyval === Gdk.KEY_O) {
+        const path = this._paths.get(focused);
+        if (path) {
+          Gio.AppInfo.launch_default_for_uri(
+            Gio.File.new_for_path(GLib.path_get_dirname(path)).get_uri(),
+            null,
+          );
+        }
         return true;
       }
       if (keyval === Gdk.KEY_d || keyval === Gdk.KEY_D) {
@@ -259,7 +357,9 @@ export default class WallpaperPickerPreferences extends ExtensionPreferences {
 
     this._gridScroll = new Gtk.ScrolledWindow({
       vexpand: true,
-      min_content_height: 500,
+      propagate_natural_height: true,
+      vscrollbar_policy: Gtk.PolicyType.AUTOMATIC,
+      hscrollbar_policy: Gtk.PolicyType.NEVER,
     });
     this._gridScroll.set_child(this._flowBox);
     this._flowBox.set_hadjustment(this._gridScroll.get_hadjustment());
@@ -379,29 +479,33 @@ export default class WallpaperPickerPreferences extends ExtensionPreferences {
       }
 
       this._showGridState("grid");
-      this._loadIdleId = GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () =>
-        this._loadNext(),
-      );
+      this._gridScroll.add_css_class("hide-scrollbar"); // Start hidden
+      this._loadIdleId = GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+        this._loadNext();
+        return GLib.SOURCE_REMOVE;
+      });
     });
   }
 
-  _loadNext() {
-    for (let i = 0; i < 10; i++) {
+  async _loadNext() {
+    const batchSize = 12;
+    let activeMetaToLoad = null;
+
+    for (let i = 0; i < batchSize; i++) {
       if (!this._pending.length) {
         this._loadIdleId = null;
-        // If notify::is-active already fired (activeSigId is null), focus now.
-        // Otherwise the notify::is-active handler will call _focusGrid() once shown.
-        if (this._activeSigId === null)
+        if (this._activeSigId === null) {
           GLib.idle_add(GLib.PRIORITY_DEFAULT, () => {
             this._focusGrid();
             return GLib.SOURCE_REMOVE;
           });
-        return GLib.SOURCE_REMOVE;
+        }
+        break; // Finish the batch loop if no more pending images
       }
 
       const path = this._pending.shift();
       try {
-        const thumbPath = getThumbnail(path);
+        const thumbPath = await getThumbnailAsync(path);
         const pixbuf = GdkPixbuf.Pixbuf.new_from_file(thumbPath);
         const texture = Gdk.Texture.new_for_pixbuf(pixbuf);
         const fname = GLib.path_get_basename(path);
@@ -466,17 +570,53 @@ export default class WallpaperPickerPreferences extends ExtensionPreferences {
         if (path === this._current) {
           this._activeChild = fbChild;
           cardBox.add_css_class("active");
-          const info = getImageInfo(path);
-          meta.set_label(info);
-          meta.set_visible(true);
-          infoLoaded = true;
+          // Store for loading after the visual batch finishes
+          activeMetaToLoad = {
+            meta,
+            path,
+            fbChild,
+            isFav,
+            setLoaded: () => {
+              infoLoaded = true;
+            },
+          };
         }
       } catch (e) {
         console.debug(`[wallpaper-picker] _loadNext ${path}: ${e.message}`);
       }
     }
 
-    return GLib.SOURCE_CONTINUE;
+    // After images are rendered, fetch metadata for the active one.
+    // Since images are unshifted to the front, this usually happens after the first 10.
+    if (activeMetaToLoad) {
+      const { meta, path, fbChild, isFav, setLoaded } = activeMetaToLoad;
+      const info = getImageInfo(path);
+      meta.set_label(info);
+      meta.set_visible(true);
+      fbChild.set_tooltip_text(isFav ? `★ ${info}` : info);
+      setLoaded();
+    }
+
+    if (this._pending.length > 0) {
+      this._loadIdleId = GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+        this._loadNext();
+        return GLib.SOURCE_REMOVE;
+      });
+    } else {
+      this._loadIdleId = null;
+      this._updateScrollbar();
+    }
+  }
+
+  _updateScrollbar() {
+    let count = 0;
+    let c = this._flowBox.get_first_child();
+    while (c) {
+      if (c.get_child_visible()) count++;
+      c = c.get_next_sibling();
+    }
+    if (count > 12) this._gridScroll.remove_css_class("hide-scrollbar");
+    else this._gridScroll.add_css_class("hide-scrollbar");
   }
 
   // ---------------------------------------------------------------------------
@@ -550,13 +690,16 @@ export default class WallpaperPickerPreferences extends ExtensionPreferences {
     });
 
     for (const item of [
-      { label: "Set as Wallpaper", cb: () => this._applyWallpaper(child) },
       {
-        label: isFav ? "★ Remove Favorite" : "☆ Add Favorite",
+        label: "Set as Wallpaper",
+        cb: () => this._applyWallpaper(child),
+      },
+      {
+        label: isFav ? "★ Remove Favorite (F)" : "☆ Add Favorite (F)",
         cb: () => this._toggleFavorite(child),
       },
       {
-        label: "Reveal in Files",
+        label: "Reveal in Files (O)",
         cb: () =>
           Gio.AppInfo.launch_default_for_uri(
             Gio.File.new_for_path(GLib.path_get_dirname(path)).get_uri(),
@@ -564,14 +707,33 @@ export default class WallpaperPickerPreferences extends ExtensionPreferences {
           ),
       },
       {
-        label: "Delete…",
+        label: "Delete (D)",
         destructive: true,
         cb: () => this._confirmDelete(child, path),
       },
     ]) {
-      const btn = new Gtk.Button({ label: item.label });
+      const btn = new Gtk.Button({
+        hexpand: true,
+        halign: Gtk.Align.FILL,
+      });
       btn.add_css_class("flat");
-      if (item.destructive) btn.add_css_class("destructive-action");
+
+      const label = new Gtk.Label({
+        label: item.label,
+        xalign: 0,
+        margin_start: 12,
+        margin_end: 12,
+        margin_top: 6,
+        margin_bottom: 6,
+      });
+
+      btn.add_css_class("flat");
+      if (item.destructive) {
+        btn.add_css_class("wp-delete-button");
+        label.add_css_class("wp-delete-label");
+      }
+
+      btn.set_child(label);
       btn.connect("clicked", () => {
         this._ctxPopover?.popdown();
         item.cb();
@@ -655,6 +817,7 @@ export default class WallpaperPickerPreferences extends ExtensionPreferences {
           c = c.get_next_sibling();
         }
         this._showGridState(hasVisible ? "grid" : "no-results");
+        this._updateScrollbar();
         return GLib.SOURCE_REMOVE;
       },
     );
@@ -662,7 +825,7 @@ export default class WallpaperPickerPreferences extends ExtensionPreferences {
 
   _filterFunc(child) {
     if (!this._queryCache) return true;
-    return (this._names.get(child) ?? "").includes(this._queryCache);
+    return fuzzyMatch(this._queryCache, this._names.get(child) ?? "");
   }
 
   // ---------------------------------------------------------------------------
@@ -765,6 +928,7 @@ export default class WallpaperPickerPreferences extends ExtensionPreferences {
     const maxRow = new Adw.SpinRow({
       title: "Max Images",
       subtitle: "0 = show all (no limit)",
+      numeric: true,
       adjustment: new Gtk.Adjustment({
         value: Number(this._config.max_images ?? 0),
         lower: 0,
@@ -773,6 +937,12 @@ export default class WallpaperPickerPreferences extends ExtensionPreferences {
         page_increment: 100,
       }),
     });
+    maxRow.connect("changed", (editable) => {
+      const text = editable.get_text();
+      const filtered = text.replace(/[^\d]/g, "");
+      if (text !== filtered) editable.set_text(filtered);
+    });
+
     maxRow.connect("notify::value", (r) => {
       this._config.max_images = Math.round(r.get_value());
       this._save();
@@ -806,6 +976,44 @@ export default class WallpaperPickerPreferences extends ExtensionPreferences {
     });
     modeGroup.add(modeRow);
     page.add(modeGroup);
+
+    const shortcutsGroup = new Adw.PreferencesGroup({
+      title: "Keyboard Shortcuts",
+      description: "Available when navigating the wallpaper grid",
+    });
+
+    const shortcuts = [
+      { key: "M", desc: "Cycle Menus" },
+      { key: "S", desc: "Focus Search Bar" },
+      { key: "W", desc: "Jump to Active Wallpaper" },
+      { key: "F", desc: "Toggle Favorite" },
+      { key: "O", desc: "Reveal in Files" },
+      { key: "D", desc: "Delete Wallpaper" },
+      { key: "Enter", desc: "Set Wallpaper" },
+      { key: "Arrows", desc: "Navigate Grid" },
+    ];
+
+    for (const s of shortcuts) {
+      const row = new Adw.ActionRow({ title: s.desc });
+      const kbd = new Gtk.Label({
+        label: s.key,
+        css_classes: ["dim-label"],
+        valign: Gtk.Align.CENTER,
+      });
+      // A small subtle box to make it look like a key
+      const kbdBox = new Gtk.Box({
+        css_classes: ["card"],
+        margin_top: 6,
+        margin_bottom: 6,
+      });
+      kbdBox.append(kbd);
+      kbd.margin_start = kbd.margin_end = 8;
+      kbd.margin_top = kbd.margin_bottom = 2;
+
+      row.add_suffix(kbdBox);
+      shortcutsGroup.add(row);
+    }
+    page.add(shortcutsGroup);
 
     return page;
   }

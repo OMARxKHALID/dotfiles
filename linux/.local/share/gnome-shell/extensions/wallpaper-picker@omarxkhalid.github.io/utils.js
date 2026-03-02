@@ -22,8 +22,8 @@ export const THUMB_CACHE_DIR = GLib.build_filenamev([
   "thumbnails",
 ]);
 
-export const THUMB_W = 180;
-export const THUMB_H = 101;
+export const THUMB_W = 190;
+export const THUMB_H = 103;
 export const SEARCH_DEBOUNCE_MS = 150;
 
 export const IMAGE_EXTS = [
@@ -73,16 +73,37 @@ export function loadConfig() {
   }
 }
 
-export function saveConfig(cfg) {
+async function saveFileAsync(path, contents) {
   try {
-    GLib.mkdir_with_parents(DATA_DIR, 0o755);
-    GLib.file_set_contents(
-      CONFIG_FILE,
-      new TextEncoder().encode(JSON.stringify(cfg, null, 2)),
-    );
+    GLib.mkdir_with_parents(GLib.path_get_dirname(path), 0o755);
+    const file = Gio.File.new_for_path(path);
+    return new Promise((resolve, reject) => {
+      file.replace_contents_async(
+        contents,
+        null,
+        false,
+        Gio.FileCreateFlags.REPLACE_DESTINATION,
+        null,
+        (f, res) => {
+          try {
+            f.replace_contents_finish(res);
+            resolve();
+          } catch (e) {
+            reject(e);
+          }
+        },
+      );
+    });
   } catch (e) {
-    console.error(`[${APP_NAME}] saveConfig: ${e.message}`);
+    console.error(`[${APP_NAME}] saveFileAsync ${path}: ${e.message}`);
   }
+}
+
+export function saveConfig(cfg) {
+  saveFileAsync(
+    CONFIG_FILE,
+    new TextEncoder().encode(JSON.stringify(cfg, null, 2)),
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -95,10 +116,23 @@ let _statsCache = null;
 function _normaliseStats(raw) {
   const out = {};
   for (const [k, v] of Object.entries(raw)) {
-    out[k] =
-      typeof v === "object" && v !== null
-        ? { count: v.count ?? 0, last_used: v.last_used ?? 0.0 }
-        : { count: Number(v) || 0, last_used: 0.0 };
+    if (typeof v === "object" && v !== null) {
+      out[k] = {
+        count: v.count ?? 0,
+        last_used: v.last_used ?? 0.0,
+        res: v.res ?? null,
+        size: v.size ?? null,
+        mtime: v.mtime ?? 0,
+      };
+    } else {
+      out[k] = {
+        count: Number(v) || 0,
+        last_used: 0.0,
+        res: null,
+        size: null,
+        mtime: 0,
+      };
+    }
   }
   return out;
 }
@@ -117,19 +151,52 @@ export function loadStats() {
   return _statsCache;
 }
 
+let _saveTid = null;
+function _saveStats() {
+  if (!_statsCache) return;
+  if (_saveTid) return;
+
+  // Debounce saving to 2 seconds to batch metadata updates during scrolling/hovering.
+  _saveTid = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 2000, () => {
+    _saveTid = null;
+    saveFileAsync(
+      STATS_FILE,
+      new TextEncoder().encode(JSON.stringify(_statsCache)),
+    );
+    return GLib.SOURCE_REMOVE;
+  });
+}
+
+export function flushStats() {
+  if (!_saveTid || !_statsCache) return;
+  GLib.Source.remove(_saveTid);
+  _saveTid = null;
+  try {
+    GLib.mkdir_with_parents(GLib.path_get_dirname(STATS_FILE), 0o755);
+    GLib.file_set_contents(
+      STATS_FILE,
+      new TextEncoder().encode(JSON.stringify(_statsCache)),
+    );
+  } catch (e) {
+    console.error(`[${APP_NAME}] flushStats: ${e.message}`);
+  }
+}
+
 export function recordUse(path) {
   try {
     const stats = loadStats();
     const fname = GLib.path_get_basename(path);
-    const entry = stats[fname] ?? { count: 0, last_used: 0.0 };
+    const entry = stats[fname] ?? {
+      count: 0,
+      last_used: 0.0,
+      res: null,
+      size: null,
+    };
     entry.count += 1;
     entry.last_used = GLib.get_real_time() / 1_000_000;
     stats[fname] = entry;
-    GLib.mkdir_with_parents(DATA_DIR, 0o755);
-    GLib.file_set_contents(
-      STATS_FILE,
-      new TextEncoder().encode(JSON.stringify(stats)),
-    );
+
+    _saveStats();
   } catch (e) {
     console.error(`[${APP_NAME}] recordUse: ${e.message}`);
   }
@@ -151,15 +218,10 @@ export function loadFavorites() {
 }
 
 export function saveFavorites(favSet) {
-  try {
-    GLib.mkdir_with_parents(DATA_DIR, 0o755);
-    GLib.file_set_contents(
-      FAVORITES_FILE,
-      new TextEncoder().encode(JSON.stringify([...favSet])),
-    );
-  } catch (e) {
-    console.error(`[${APP_NAME}] saveFavorites: ${e.message}`);
-  }
+  saveFileAsync(
+    FAVORITES_FILE,
+    new TextEncoder().encode(JSON.stringify([...favSet])),
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -336,63 +398,99 @@ export function getImagesAsync(
 // Thumbnails
 // ---------------------------------------------------------------------------
 
-export function getThumbnail(imagePath) {
-  try {
-    GLib.mkdir_with_parents(THUMB_CACHE_DIR, 0o755);
-    const hash = GLib.compute_checksum_for_string(
-      GLib.ChecksumType.MD5,
-      imagePath,
-      -1,
-    );
-    const thumbPath = GLib.build_filenamev([THUMB_CACHE_DIR, `${hash}.png`]);
-    const thumbFile = Gio.File.new_for_path(thumbPath);
-    const origFile = Gio.File.new_for_path(imagePath);
+export async function getThumbnailAsync(imagePath) {
+  const hash = GLib.compute_checksum_for_string(
+    GLib.ChecksumType.MD5,
+    imagePath,
+    -1,
+  );
+  const thumbPath = GLib.build_filenamev([THUMB_CACHE_DIR, `${hash}.png`]);
+  const thumbFile = Gio.File.new_for_path(thumbPath);
+  const origFile = Gio.File.new_for_path(imagePath);
 
+  try {
     if (thumbFile.query_exists(null)) {
-      const tTime =
-        thumbFile
-          .query_info("time::modified", Gio.FileQueryInfoFlags.NONE, null)
-          .get_modification_date_time()
-          ?.to_unix() ?? 0;
-      const oTime =
-        origFile
-          .query_info("time::modified", Gio.FileQueryInfoFlags.NONE, null)
-          .get_modification_date_time()
-          ?.to_unix() ?? 0;
+      const tInfo = thumbFile.query_info(
+        "time::modified",
+        Gio.FileQueryInfoFlags.NONE,
+        null,
+      );
+      const oInfo = origFile.query_info(
+        "time::modified",
+        Gio.FileQueryInfoFlags.NONE,
+        null,
+      );
+      const tTime = tInfo.get_modification_date_time()?.to_unix() ?? 0;
+      const oTime = oInfo.get_modification_date_time()?.to_unix() ?? 0;
       if (tTime >= oTime) return thumbPath;
     }
+  } catch (_) {}
 
-    const pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(
-      imagePath,
-      THUMB_W,
-      THUMB_H,
-      false,
-    );
-    pixbuf.savev(thumbPath, "png", [], []);
-    return thumbPath;
-  } catch (e) {
-    console.debug(`[${APP_NAME}] getThumbnail ${imagePath}: ${e.message}`);
-    return imagePath;
-  }
+  return new Promise((resolve) => {
+    GLib.mkdir_with_parents(THUMB_CACHE_DIR, 0o755);
+    GLib.idle_add(GLib.PRIORITY_DEFAULT, () => {
+      try {
+        const pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(
+          imagePath,
+          THUMB_W,
+          THUMB_H,
+          false,
+        );
+        pixbuf.savev(thumbPath, "png", [], []);
+        resolve(thumbPath);
+      } catch (e) {
+        console.debug(
+          `[${APP_NAME}] getThumbnailAsync ${imagePath}: ${e.message}`,
+        );
+        resolve(imagePath);
+      }
+      return GLib.SOURCE_REMOVE;
+    });
+  });
 }
 
 export function getImageInfo(path) {
+  const fname = GLib.path_get_basename(path);
   try {
-    const info = Gio.File.new_for_path(path).query_info(
-      "standard::size",
+    const stats = loadStats();
+    let entry = stats[fname];
+
+    const file = Gio.File.new_for_path(path);
+    const info = file.query_info(
+      "standard::size,time::modified",
       Gio.FileQueryInfoFlags.NONE,
       null,
     );
+    const mtime = info.get_modification_date_time()?.to_unix() ?? 0;
+
+    // Return cached metadata if available and mtime matches
+    if (entry?.res && entry?.size && entry?.mtime === mtime)
+      return `${entry.res} | ${entry.size}`;
+
     const size = info.get_size();
     const sizeStr =
       size > 1_048_576
         ? `${(size / 1_048_576).toFixed(1)} MB`
         : `${Math.round(size / 1024)} KB`;
+
     const pbInfo = GdkPixbuf.Pixbuf.get_file_info(path);
     const res = pbInfo ? `${pbInfo[1]}×${pbInfo[2]}` : "???";
-    return `${res} | ${sizeStr}`;
+
+    const result = `${res} | ${sizeStr}`;
+
+    // Update cache
+    if (!entry) {
+      entry = stats[fname] = { count: 0, last_used: 0 };
+    }
+    entry.res = res;
+    entry.size = sizeStr;
+    entry.mtime = mtime;
+
+    _saveStats();
+
+    return result;
   } catch (e) {
-    console.debug(`[${APP_NAME}] getImageInfo ${path}: ${e.message}`);
+    console.debug(`[${APP_NAME}] getImageInfo ${fname}: ${e.message}`);
     return "Unknown";
   }
 }
@@ -542,4 +640,20 @@ export function shortenPath(path) {
   if (path === home || path.startsWith(`${home}/`))
     return `~${path.substring(home.length)}`;
   return path;
+}
+
+/**
+ * A simple fuzzy match that checks if characters appear in order.
+ * Returns true if match, false otherwise.
+ */
+export function fuzzyMatch(query, text) {
+  if (!query) return true;
+  if (!text) return false;
+  let i = 0,
+    j = 0;
+  while (i < query.length && j < text.length) {
+    if (query[i] === text[j]) i++;
+    j++;
+  }
+  return i === query.length;
 }
