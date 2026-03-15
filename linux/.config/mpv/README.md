@@ -9,6 +9,7 @@ This folder contains mpv configuration and custom scripts used by both `mpv` and
 - **Hardware Decoding**: Enabled `auto-safe` to minimize CPU usage and battery drain.
 - **Improved Caching**: Large 400MiB buffer to prevent stuttering on high-bitrate media.
 - **Premium Aesthetics**: Bold, readable subtitle styling with semi-transparent shadows for all environments.
+- **ModernX OSC**: Beautifully designed on-screen controller with smooth animations and clean icons.
 - **Customized OSD**: Styled with `JetBrainsMono Nerd Font`.
 
 ### 2. Auto Subtitle Downloader & Syncer (`autosub.lua`)
