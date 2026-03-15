@@ -67,6 +67,9 @@ function download_from_provider(provider, movie_path, dir, base)
         mp.msg.warn('Renamed: ' .. src .. ' -> ' .. dst)
         return true
     else
+        if (result.status or 0) ~= 0 or string.find(output, 'Traceback') or string.find(output, 'Exception') then
+            write_error_log("Subliminal error for provider '" .. provider .. "' (status " .. tostring(result.status) .. "):\n" .. output)
+        end
         mp.msg.warn(provider .. ': no subtitle found')
         return false
     end
@@ -245,16 +248,34 @@ function sync_subtitles()
             })
             mp.msg.warn('Deleted unsynced subtitle: ' .. sub_path)
         else
-            log('Auto-sync failed! See terminal for error.', 5)
+            log('Auto-sync failed! Check error.txt in video folder.', 5)
+            local err_msg = "ffsubsync failed with status " .. tostring(result.status)
             if result and result.stderr then
                 mp.msg.warn('ffsubsync error: ' .. result.stderr)
+                err_msg = err_msg .. "\nStderr:\n" .. tostring(result.stderr)
             end
+            write_error_log(err_msg)
         end
     end)
 end
 
 
 -- Helpers
+function write_error_log(msg)
+    local movie_path = mp.get_property('path')
+    if not movie_path then return end
+    local dir = utils.split_path(movie_path)
+    local err_file = dir .. "error.txt"
+
+    local f = io.open(err_file, "a")
+    if f then
+        f:write("=== ERROR " .. os.date("%Y-%m-%d %H:%M:%S") .. " ===\n" .. msg .. "\n\n")
+        f:close()
+    else
+        mp.msg.warn("Could not open " .. err_file .. " for writing errors.")
+    end
+end
+
 function table_join(t, sep)
     local s = ""
     for i, v in ipairs(t) do
