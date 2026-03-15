@@ -35,8 +35,7 @@ local last_movie_path = ""
 function download_from_provider(provider, movie_path, dir, base)
     log('Trying ' .. provider .. ' ...', 10)
 
-    local a = {
-        "flatpak-spawn", "--host",
+    local a = build_cmd({
         subliminal,
         "download",
         "-f",
@@ -44,7 +43,7 @@ function download_from_provider(provider, movie_path, dir, base)
         "-l", language[2],
         "-p", provider,
         movie_path
-    }
+    })
 
     mp.msg.warn('Running: ' .. table_join(a, " "))
 
@@ -62,7 +61,7 @@ function download_from_provider(provider, movie_path, dir, base)
 
         -- Rename to provider-specific name so we keep all copies
         local rename_result = utils.subprocess({
-            args = { "flatpak-spawn", "--host", "mv", src, dst }
+            args = build_cmd({ "mv", src, dst })
         })
         mp.msg.warn('Renamed: ' .. src .. ' -> ' .. dst)
         return true
@@ -221,14 +220,13 @@ function sync_subtitles()
         dst = sub_path .. ".sync.srt"
     end
 
-    local a = {
-        "flatpak-spawn", "--host",
+    local a = build_cmd({
         "/home/omar/.local/bin/ffsubsync",
         movie_path,
         "-i", sub_path,
         "-o", dst,
         "--vad", "auditok"
-    }
+    })
 
     mp.msg.warn('Running ffsubsync: ' .. table_join(a, " "))
 
@@ -244,7 +242,7 @@ function sync_subtitles()
             
             -- Delete the original unsynced subtitle file using host OS to bypass Flatpak restrictions
             utils.subprocess({
-                args = { "flatpak-spawn", "--host", "rm", "-f", sub_path }
+                args = build_cmd({ "rm", "-f", sub_path })
             })
             mp.msg.warn('Deleted unsynced subtitle: ' .. sub_path)
         else
@@ -261,6 +259,18 @@ end
 
 
 -- Helpers
+function build_cmd(cmd_list)
+    if os.getenv("FLATPAK_ID") then
+        local flatpak_cmd = {"flatpak-spawn", "--host"}
+        for _, v in ipairs(cmd_list) do
+            table.insert(flatpak_cmd, v)
+        end
+        return flatpak_cmd
+    else
+        return cmd_list
+    end
+end
+
 function write_error_log(msg)
     local movie_path = mp.get_property('path')
     if not movie_path then return end
