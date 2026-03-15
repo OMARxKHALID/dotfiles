@@ -12,13 +12,18 @@ fi
 source "$HOME/.zinit/bin/zinit.zsh"
 
 # Core plugins
-zinit light zsh-users/zsh-completions
 zinit ice depth=1; zinit light romkatv/powerlevel10k
+zinit light zsh-users/zsh-completions
 
-# Completion init
+# Optimized Completion system
 autoload -Uz compinit
 _comp_path="${XDG_CACHE_HOME:-$HOME/.cache}/zsh/zcompdump-${(%):-%n}"
-compinit -i -d "$_comp_path"
+# Only regenerate zcompdump once a day
+if [[ -n "$_comp_path"(#qN.mh+24) ]]; then
+    compinit -d "$_comp_path"
+else
+    compinit -C -d "$_comp_path"
+fi
 zinit cdreplay -q
 unset _comp_path
 
@@ -70,6 +75,15 @@ export FZF_DEFAULT_OPTS="${FZF_DEFAULT_OPTS} \
   --color=fg:#ebdbb2,header:#928374,info:#8ec07c,pointer:#fb4934 \
   --color=marker:#fb4934,fg+:#ebdbb2,prompt:#fb4934,hl+:#fb4934"
 
+# Use batcat if available (Debian/Ubuntu), otherwise bat
+if command -v batcat &> /dev/null; then
+    _fzf_preview_cmd="batcat -n --color=always"
+else
+    _fzf_preview_cmd="bat -n --color=always"
+fi
+
+export FZF_CTRL_T_OPTS="--preview '$_fzf_preview_cmd {}' --bind 'ctrl-/:change-preview-window(down|hidden|)'"
+
 # Zoxide integration
 if command -v zoxide &> /dev/null; then
     eval "$(zoxide init zsh)"
@@ -83,7 +97,7 @@ alias zshrc='${EDITOR:-nano} $ZDOTDIR/.zshrc'
 alias reloadzsh='source $ZDOTDIR/.zshrc'
 
 # Syntax highlighting
-zinit ice wait"0c" lucid
+zinit ice wait"0c" lucid atinit"zpcompinit; zpcdreplay"
 zinit light zsh-users/zsh-syntax-highlighting
 
 # P10k theme

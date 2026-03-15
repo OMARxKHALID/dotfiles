@@ -44,7 +44,6 @@ link_file "$SCRIPT_DIR/.zshenv" "$HOME/.zshenv"
 link_file "$SCRIPT_DIR/.profile" "$HOME/.profile"
 link_file "$SCRIPT_DIR/.bashrc" "$HOME/.bashrc"
 
-
 # --- Config Directories ---
 link_file "$SCRIPT_DIR/.config/zsh" "$HOME/.config/zsh"
 link_file "$SCRIPT_DIR/.config/aliasrc" "$HOME/.config/aliasrc"

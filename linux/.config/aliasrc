@@ -5,12 +5,18 @@ alias ..='cd ..'
 alias ...='cd ../..'
 alias ....='cd ../../..'
 
+# Zoxide (Better cd)
+if command -v zoxide &> /dev/null; then
+    alias cd='z'
+    alias cdi='zi'
+fi
+
 # Listing
 if command -v eza &> /dev/null; then
-    alias ls='eza --color=always --icons=always --group-directories-first'
-    alias ll='eza -alF --color=always --icons=always --group-directories-first'
-    alias la='eza -A --color=always --icons=always --group-directories-first'
-    alias l='eza -CF --color=always --icons=always --group-directories-first'
+    alias ls='eza --color=auto --icons=always --group-directories-first'
+    alias ll='eza -alF --color=auto --icons=always --group-directories-first'
+    alias la='eza -A --color=auto --icons=always --group-directories-first'
+    alias l='eza -CF --color=auto --icons=always --group-directories-first'
 else
     alias ls='ls --color=auto'
     alias ll='ls -alF --color=auto'
@@ -36,6 +42,9 @@ alias c='clear'
 alias cls='clear'
 alias h='history'
 alias nf='neofetch'
+
+# Helium alias
+alias helium='( /home/omar/AppImages/helium.appimage >/dev/null 2>&1 & )'
 
 # Cleanup
 alias rem='rm -rI'
@@ -97,6 +106,7 @@ alias df='df -h'     # Human-readable disk usage
 alias free='free -m' # Memory in MB
 alias ports='netstat -tulanp'
 alias myip='curl -s https://ifconfig.me && echo'
+alias killport='fuser -k -n tcp'
 
 # Sync
 alias sync='~/Dev/dotfiles/linux/install.sh'
