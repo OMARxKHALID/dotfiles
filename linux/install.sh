@@ -52,6 +52,7 @@ link_file "$SCRIPT_DIR/.config/kitty" "$HOME/.config/kitty"
 link_file "$SCRIPT_DIR/.config/terminal" "$HOME/.config/terminal"
 link_file "$SCRIPT_DIR/.config/dircolors" "$HOME/.config/dircolors"
 link_file "$SCRIPT_DIR/.config/yazi" "$HOME/.config/yazi"
+link_file "$SCRIPT_DIR/.config/mpv" "$HOME/.config/mpv"
 
 echo -e "${GREEN}Installation complete!${NC}"
 echo -e "${BLUE}Note: You may need to reload your shell to see all changes.${NC}"

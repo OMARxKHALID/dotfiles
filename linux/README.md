@@ -16,6 +16,7 @@ Zsh + Bash shell with kitty terminal config with Powerlevel10k, zinit, bat, eza,
 | `.config/terminal/` | GNOME Terminal color scheme (Gruvbox) |
 | `.config/bat/` | Bat (cat replacement) configuration |
 | `.config/yazi/` | Yazi terminal file manager configuration |
+| `.config/mpv/` | MPV and Celluloid config (Auto Subtitles & Sync) |
 | `.config/dircolors` | LS_COLORS configuration |
 
 ## How Shell Startup Works

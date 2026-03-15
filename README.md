@@ -24,6 +24,7 @@ My development environment configs for Windows and Linux.
         ├── terminal/
         │   └── tcs-gruvbox.dconf  # GNOME Terminal color scheme
         ├── yazi/         # Yazi file manager configuration
+        ├── mpv/          # MPV & Celluloid config (Auto Subs & Sync)
         ├── dircolors     # LS_COLORS configuration
         └── zsh/
             ├── .zshenv   # Zsh environment (XDG, PATH)
