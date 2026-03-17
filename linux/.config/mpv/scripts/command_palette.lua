@@ -121,22 +121,19 @@ mp.commandv('script-message', 'command-palette-version', command_palette_version
 
 function get_mpv_version()
     local version = mp.get_property("mpv-version")
-    local major, minor = version:match("^mpv v(%d+)%.(%d+)%.")
-
-    if major and minor then
-        return tonumber(major), tonumber(minor)
+    if version then
+        local major, minor = version:match("([%d%.]+)"):match("(%d+)%.(%d+)")
+        if major and minor then
+            return tonumber(major), tonumber(minor)
+        end
     end
+    return 0, 0
 end
 
 local major, minor = get_mpv_version()
-
-if major == nil or minor == nil then
-    msg.error("Failed getting mpv version.")
-end
-
-if major == nil or minor == nil or (major > 0 or (major == 0 and minor > 35)) then
-    mp.set_property_native("user-data/command-palette/version", command_palette_version)
-end
+local is_older_than_v0_36 = not (major > 0 or (major == 0 and minor > 35))
+local saved_osc_visibility = nil
+local palette_is_active = false
 
 mp.enable_messages("info")
 
@@ -210,14 +207,22 @@ end
 
 function em:set_active(active)
     original_set_active_func(self, active)
+    palette_is_active = active
 
     if not active then
-        if osc_visibility == "auto" or osc_visibility == "always" then
-            mp.command("script-message osc-visibility " .. osc_visibility .. " no_osd")
-            osc_visibility = nil
-        elseif uosc_available then
-            mp.commandv('script-message-to', 'uosc', 'disable-elements', mp.get_script_name(), '')
-        end
+        -- Small delay to see if we are just transitioning to another palette menu
+        mp.add_timeout(0.05, function()
+            if not palette_is_active then
+                if saved_osc_visibility then
+                    mp.command("script-message osc-visibility " .. saved_osc_visibility .. " no_osd")
+                    saved_osc_visibility = nil
+                elseif uosc_available then
+                    mp.commandv('script-message-to', 'uosc', 'disable-elements', mp.get_script_name(), '')
+                end
+                -- Explicitly show ModernZ when palette closes
+                mp.commandv("script-message-to", "modernz", "osc-show")
+            end
+        end)
     end
 end
 
@@ -234,6 +239,16 @@ local function format_time(t, duration)
     end
 
     return string.format("%.2d:%.2d", m, s)
+end
+
+local function format_size(bytes)
+    if not bytes or bytes == "" or bytes == 0 then return "" end
+    local n = tonumber(bytes)
+    if not n then return "" end
+    if n > 1024^3 then return string.format("%.1f GiB", n / 1024^3) end
+    if n > 1024^2 then return string.format("%.1f MiB", n / 1024^2) end
+    if n > 1024 then return string.format("%.1f KiB", n / 1024) end
+    return bytes .. " B"
 end
 
 function get_media_info()
@@ -455,13 +470,7 @@ local function select_track(property, type, error)
 end
 
 function hide_osc()
-    if is_empty(mp.get_property("path")) and not is_older_than_v0_36 then
-        osc_visibility = mp.get_property_native("user-data/osc/visibility")
-
-        if osc_visibility == "auto" or osc_visibility == "always" then
-            mp.command("script-message osc-visibility never no_osd")
-        end
-    end
+    mp.commandv("script-message-to", "modernz", "osc-hide")
 
     if uosc_available then
         local disable_elements = "window_border, top_bar, timeline, controls, volume, idle_indicator, audio_indicator, buffering_indicator, pause_indicator"
@@ -470,6 +479,8 @@ function hide_osc()
 end
 
 mp.register_script_message("show-command-palette", function (name)
+    hide_osc()
+
     if dpiScale == 0 then
         dpiScale = mp.get_property_native("display-hidpi-scale", 1)
     end
@@ -497,6 +508,14 @@ mp.register_script_message("show-command-palette", function (name)
             "Chapters",
             "Aspect Ratio",
             "Stream Quality",
+        }
+
+        local path = mp.get_property("path")
+        if path and (path:find("^https?://") or path:find("^ytdl://")) then
+            table.insert(items, "Download Video")
+        end
+
+        local extra_items = {
             "Fonts",
             "Tracks",
             "Video Tracks",
@@ -509,6 +528,10 @@ mp.register_script_message("show-command-palette", function (name)
             "Properties",
             "Options",
         }
+
+        for _, item in ipairs(extra_items) do
+            table.insert(items, item)
+        end
 
         for _, item in ipairs(items) do
             local found = false
@@ -602,6 +625,77 @@ mp.register_script_message("show-command-palette", function (name)
         mp.commandv("script-message-to", "playlistmanager", "playlistmanager", "show", "playlist")
         em:set_active(false) -- Hide the command palette immediately so they don't overlap
         return
+    elseif name == "Download Video" then
+        local path = mp.get_property("path")
+        if not path then return end
+
+        if menu_content.download_loading then
+            table.insert(menu_content.list, { index = 1, content = "Checking available qualities... (Please wait)" })
+        elseif not menu_content.download_data or menu_content.download_path ~= path then
+            menu_content.download_data = nil
+            menu_content.download_loading = true
+            table.insert(menu_content.list, { index = 1, content = "Checking available qualities... (Please wait)" })
+
+            local args = {"yt-dlp", "--no-download", "--print", "formats:%(height)s:%(filesize,filesize_approx)s", path}
+            mp.command_native_async({name = "subprocess", args = args, capture_stdout = true}, function(res, val)
+                menu_content.download_loading = false
+                menu_content.download_data = {}
+                if val and res and val.status == 0 and val.stdout then
+                    local formats = {}
+                    for line in val.stdout:gmatch("[^\r\n]+") do
+                        local h, s = line:match("([^:]+):([^:]*)")
+                        if h then
+                            local height = tonumber(h)
+                            local size = tonumber(s) or 0
+                            if height then
+                                if not formats[height] or size > formats[height] then
+                                    formats[height] = size
+                                end
+                            end
+                        end
+                    end
+                    menu_content.download_data = formats
+                    menu_content.download_path = path
+                end
+                -- Re-open menu with actual data (or fallback if failed)
+                mp.commandv("script-message-to", mp.get_script_name(), "show-command-palette", "Download Video")
+            end)
+        else
+            local formats = menu_content.download_data
+            local options = {}
+            table.insert(options, { name = "Best Quality", value = "bestvideo+bestaudio/best" })
+
+            local heights = {}
+            for h, _ in pairs(formats) do table.insert(heights, h) end
+            table.sort(heights, function(a, b) return a > b end)
+
+            for _, h in ipairs(heights) do
+                local size_val = formats[h]
+                local size_str = (size_val > 0) and (" [" .. format_size(size_val + 7000000) .. "]") or ""
+                table.insert(options, { name = h .. "p" .. size_str, value = "bestvideo[height<=" .. h .. "]+bestaudio/best" })
+            end
+
+            if #options <= 1 then
+                options = {
+                    { name = "Best Quality", value = "bestvideo+bestaudio/best" },
+                    { name = "1080p (Official)", value = "bestvideo[height<=1080]+bestaudio/best" },
+                    { name = "720p (Official)", value = "bestvideo[height<=720]+bestaudio/best" },
+                    { name = "480p", value = "bestvideo[height<=480]+bestaudio/best" },
+                    { name = "360p", value = "bestvideo[height<=360]+bestaudio/best" },
+                }
+            end
+            table.insert(options, { name = "Audio Only", value = "bestaudio/best" })
+
+            for k, v in ipairs(options) do
+                table.insert(menu_content.list, { index = k, content = v.name, value = v.value })
+            end
+        end
+
+        function menu:submit(tbl)
+            mp.commandv("script-message-to", "modernz", "download-video-format", tbl.value)
+            mp.commandv("script-message-to", "modernz", "osc-show")
+            menu:set_active(false)
+        end
     elseif name == "Commands" then
         local commands = utils.parse_json(mp.get_property("command-list"))
 

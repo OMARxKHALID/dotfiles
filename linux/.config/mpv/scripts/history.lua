@@ -1,7 +1,6 @@
--- MPV History Tracker
--- Source: https://github.com/stax76/mpv-scripts
+local msg = require "mp.msg"
+local opt = require "mp.options"
 
--- String Utilities
 function is_empty(input)
     if input == nil or input == "" then
         return true
@@ -50,12 +49,10 @@ function pad_left(input, len, char)
     return string.rep(char, len - #input) .. input
 end
 
--- Math Utilities
 function round(value)
     return value >= 0 and math.floor(value + 0.5) or math.ceil(value - 0.5)
 end
 
--- File Utilities
 function file_exists(path)
     local f = io.open(path, "r")
     if f ~= nil then
@@ -70,18 +67,13 @@ function file_append(path, content)
     h:close()
 end
 
--- MPV Modules
-local msg = require "mp.msg"
-local opt = require "mp.options"
-
--- History Logic
-time = 0 
+time = 0
 path = ""
 
 local o = {
     exclude = "",
     storage_path = "~~/history.log",
-    minimal_play_time = 0, -- log everything for now to ensure consistency
+    minimal_play_time = 0,
 }
 
 opt.read_options(o)
@@ -128,6 +120,5 @@ function history()
     time = os.time()
 end
 
--- Events
 mp.register_event("shutdown", history)
 mp.register_event("file-loaded", history)

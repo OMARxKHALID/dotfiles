@@ -529,6 +529,7 @@ local state = {
     is_URL = false,
     is_image = false,
     url_path = "",                           -- used for yt-dlp downloading
+    download_handle = nil,                   -- stores the handle to cancel downloads
 }
 
 local logo_lines = {
@@ -745,7 +746,7 @@ local function ass_draw_rr_h_cw(ass, x0, y0, x1, y1, r1, hexagon, r2)
 end
 
 local function get_hidetimeout()
-    if user_opts.visibility == "always" then
+    if user_opts.visibility == "always" or (state.downloading and user_opts.download_button) then
         return -1 -- disable autohide
     end
     return user_opts.hidetimeout
@@ -1423,6 +1424,11 @@ local function exec_filesize(args)
         capture_stdout = true,
         capture_stderr = true
     }, function(res, val)
+        if not val or not val.stdout then
+            state.file_size_normalized = "Unknown"
+            request_tick()
+            return
+        end
         local fileSizeString = val.stdout
         state.file_size_bytes = tonumber(fileSizeString)
 
@@ -1443,38 +1449,6 @@ local function exec_filesize(args)
 
         request_tick()
     end)
-end
-
-local function download_done(success, result, error)
-    if success then
-        local download_path = mp.command_native({"expand-path", user_opts.download_path})
-        mp.command("show-text 'Download saved to " .. download_path .. "'")
-        state.downloaded_once = true
-        msg.info("Download completed")
-    else
-        mp.command("show-text 'Download failed - " .. (error or "Unknown error") .. "'")
-        msg.info("Download failed")
-    end
-    state.downloading = false
-end
-
-local function exec(args, callback)
-    for i = #args, 1, -1 do
-        if args[i] == nil or args[i] == "" then
-            table.remove(args, i)
-        end
-    end
-
-    msg.info("Executing command: " .. table.concat(args, " "))
-
-    local ret = mp.command_native_async({
-        name = "subprocess",
-        args = args,
-        capture_stdout = true,
-        capture_stderr = true
-    }, callback)
-
-    return ret and ret.status or nil
 end
 
 local function check_path_url()
@@ -2070,7 +2044,7 @@ layouts["modern-image"] = function ()
         lo = add_layout("download")
         lo.geometry = {x = osc_geo.w - 172 + (ontop_button and 0 or 45) + (info_button and 0 or 45) + (fullscreen_button and 0 or 45), y = refY - 30, an = 5, w = 24, h = 24}
         lo.style = osc_styles.control_3
-        lo.visible = (osc_param.playresx >= 400)
+        lo.visible = (osc_param.playresx >= 400) and state.is_URL
     end
 end
 
@@ -2521,25 +2495,19 @@ local function osc_init()
 
     --tog_ontop
     ne = new_element("tog_ontop", "button")
-    ne.content = function () return mp.get_property("ontop") == "no" and icons.ontop_on or icons.ontop_off end
+    ne.content = function () return mp.get_property("ontop") == "yes" and icons.ontop_on or icons.ontop_off end
     ne.tooltip_style = osc_styles.tooltip
     ne.tooltipF = function () return user_opts.tooltip_hints and (mp.get_property("ontop") == "no" and locale.ontop or locale.ontop_disable) or "" end
     ne.visible = (osc_param.playresx >= visible_min_width)
     ne.eventresponder["mbtn_left_up"] = function ()
         mp.commandv("cycle", "ontop")
-        if state.initialborder == "yes" then
-            if mp.get_property("ontop") == "yes" then
-                mp.commandv("set", "border", "no")
-            else
-                mp.commandv("set", "border", "yes")
-            end
-        end
+        local state_text = mp.get_property("ontop") == "yes" and "Pinned (Always on Top)" or "Unpinned"
+        mp.osd_message(state_text, 2)
     end
     ne.eventresponder["mbtn_right_up"] = function ()
         mp.commandv("cycle", "ontop")
-        if mp.get_property("border") == "no" then
-            mp.commandv("set", "border", "yes")
-        end
+        local state_text = mp.get_property("ontop") == "yes" and "Pinned (Always on Top)" or "Unpinned"
+        mp.osd_message(state_text, 2)
     end
     visible_min_width = visible_min_width + (user_opts.ontop_button and 100 or 0)
 
@@ -2597,30 +2565,15 @@ local function osc_init()
     ne.tooltip_style = osc_styles.tooltip
     ne.tooltipF = function () return state.downloading and locale.downloading .. "..." or locale.download .. " (" .. state.file_size_normalized .. ")" end
     ne.eventresponder["mbtn_left_up"] = function ()
-        local localpath = mp.command_native({"expand-path", user_opts.download_path})
-
-        if state.downloaded_once then
-            mp.commandv("show-text", locale.downloaded)
-        elseif state.downloading then
-            mp.commandv("show-text", locale.download_in_progress)
+        if state.downloading then
+            if state.download_handle then
+                mp.abort_async_command(state.download_handle)
+            else
+                state.downloading = false
+                mp.commandv("show-text", "Cleaning up download state...")
+            end
         else
-            mp.commandv("show-text", locale.downloading .. "...")
-            state.downloading = true
-            -- use current or default ytdl-format
-            local mpv_ytdl = mp.get_property("file-local-options/ytdl-format") or mp.get_property("ytdl-format") or ""
-            local ytdl_format = (mpv_ytdl and mpv_ytdl ~= "") and "-f " .. mpv_ytdl or "-f " .. "bestvideo+bestaudio/best"
-            local command = {
-                "yt-dlp",
-                state.is_image and "" or ytdl_format,
-                state.is_image and "" or "--remux", state.is_image and "" or "mp4",
-                "--add-metadata",
-                "--embed-subs",
-                "-o", "%(title)s.%(ext)s",
-                "-P", localpath,
-                state.url_path
-            }
-
-            local status = exec(command, download_done)
+            mp.commandv("script-message-to", "command_palette", "show-command-palette", "Download Video")
         end
     end
     visible_min_width = visible_min_width + (user_opts.download_button and 100 or 0)
@@ -2911,6 +2864,7 @@ local function show_osc()
 end
 
 local function hide_osc()
+    if state.downloading then return end
     msg.trace("hide_osc")
     if thumbfast.width ~= 0 and thumbfast.height ~= 0 then
         mp.commandv("script-message-to", "thumbfast", "clear")
@@ -3080,6 +3034,93 @@ local function enable_osc(enable)
         end
         state.showhide_enabled = false
     end
+end
+
+local function exec(args, callback)
+    for i = #args, 1, -1 do
+        if args[i] == nil or args[i] == "" then
+            table.remove(args, i)
+        end
+    end
+
+    msg.info("Executing command: " .. table.concat(args, " "))
+
+    return mp.command_native_async({
+        name = "subprocess",
+        args = args,
+        capture_stdout = true,
+        capture_stderr = true
+    }, callback)
+end
+
+local function download_done(success, result, error)
+    state.download_handle = nil
+    if result and result.killed_by_us then
+        mp.command("show-text 'Download Stopped'")
+        state.downloading = false
+        show_osc()
+        return
+    end
+
+    if success then
+        local download_path = mp.command_native({"expand-path", user_opts.download_path})
+        mp.command("show-text 'Download saved to " .. download_path .. "'")
+        state.downloaded_once = true
+        msg.info("Download completed")
+    else
+        mp.command("show-text 'Download failed - " .. (error or "Unknown error") .. "'")
+        msg.info("Download failed")
+    end
+    state.downloading = false
+    show_osc()
+    request_tick()
+end
+
+local function start_download(format_string)
+    local localpath = mp.command_native({"expand-path", user_opts.download_path})
+
+    if state.downloading then
+        if state.download_handle then
+            mp.abort_async_command(state.download_handle)
+        else
+            state.downloading = false
+        end
+        return
+    end
+
+    mp.commandv("show-text", "Downloading...")
+    state.downloading = true
+
+    local ytdl_format = format_string or "bestvideo+bestaudio/best"
+    local is_audio_only = ytdl_format == "bestaudio/best"
+
+    local command
+    if is_audio_only then
+        command = {
+            "yt-dlp",
+            "-f", ytdl_format,
+            "--remux-video", "m4a",
+            "--add-metadata",
+            "-o", "%(title)s.%(ext)s",
+            "-P", localpath,
+            state.url_path
+        }
+    else
+        command = {
+            "yt-dlp",
+            state.is_image and "" or "-f", state.is_image and "" or ytdl_format,
+            state.is_image and "" or "--remux-video", state.is_image and "" or "mp4",
+            "--add-metadata",
+            "--embed-subs",
+            "-o", "%(title)s.%(ext)s",
+            "-P", localpath,
+            state.url_path
+        }
+    end
+
+    enable_osc(true)
+    show_osc()
+    state.download_handle = exec(command, download_done)
 end
 
 local function render()
@@ -3602,6 +3643,7 @@ end)
 mp.register_script_message("osc-visibility", visibility_mode)
 mp.register_script_message("osc-show", show_osc)
 mp.register_script_message("osc-hide", function()
+    if state.downloading then return end
     if user_opts.visibility == "auto" then
         osc_visible(false)
     end
@@ -3612,6 +3654,7 @@ mp.add_key_binding(nil, "progress-toggle", function()
     state.persistent_progress_toggle = user_opts.persistentprogress
     request_init()
 end)
+mp.register_script_message("download-video-format", start_download)
 mp.register_script_message("osc-idlescreen", idlescreen_visibility)
 mp.register_script_message("thumbfast-info", function(json)
     local data = utils.parse_json(json)
