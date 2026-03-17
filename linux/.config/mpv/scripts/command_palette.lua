@@ -598,24 +598,10 @@ mp.register_script_message("show-command-palette", function (name)
             mp.set_property_number("chapter", tbl.index - 1)
         end
     elseif name == "Playlist" then
-        local count = mp.get_property_number("playlist-count")
-        if count == 0 then return end
-
-        for i = 0, (count - 1) do
-            local text = mp.get_property("playlist/" .. i .. "/title")
-
-            if text == nil then
-                text = file_name(mp.get_property("playlist/" .. i .. "/filename"))
-            end
-
-            table.insert(menu_content.list, { index = i + 1, content = text })
-        end
-
-        menu_content.current_i = mp.get_property_number("playlist-pos") + 1
-
-        function menu:submit(tbl)
-            mp.set_property_number("playlist-pos", tbl.index - 1)
-        end
+        -- Forward control to the advanced PlaylistManager plugin
+        mp.commandv("script-message-to", "playlistmanager", "playlistmanager", "show", "playlist")
+        em:set_active(false) -- Hide the command palette immediately so they don't overlap
+        return
     elseif name == "Commands" then
         local commands = utils.parse_json(mp.get_property("command-list"))
 
