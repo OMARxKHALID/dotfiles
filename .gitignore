@@ -8,6 +8,7 @@
 backup*/
 .netrc
 .ssh/
+*.log
 
 # --- Temporary & Dynamic Files ---
 *~

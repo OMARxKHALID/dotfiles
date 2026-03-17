@@ -1,17 +1,17 @@
-# Shared aliases
+# Shared Aliases
 
 # Navigation
 alias ..='cd ..'
 alias ...='cd ../..'
 alias ....='cd ../../..'
 
-# Zoxide (Better cd)
+# Zoxide (cd)
 if command -v zoxide &> /dev/null; then
     alias cd='z'
     alias cdi='zi'
 fi
 
-# Listing
+# Listing (eza)
 if command -v eza &> /dev/null; then
     alias ls='eza --color=auto --icons=always --group-directories-first'
     alias ll='eza -alF --color=auto --icons=always --group-directories-first'
@@ -24,7 +24,7 @@ else
     alias l='ls -CF --color=auto'
 fi
 
-# Grep
+# Search
 alias grep='grep --color=auto'
 alias fgrep='fgrep --color=auto'
 alias egrep='egrep --color=auto'
@@ -38,28 +38,24 @@ function y() {
 	fi
 	rm -f -- "$tmp"
 }
+
 alias c='clear'
 alias cls='clear'
 alias h='history'
 alias nf='neofetch'
-
-# Helium alias
 alias helium='( /home/omar/AppImages/helium.appimage >/dev/null 2>&1 & )'
 
 # Cleanup
 alias rem='rm -rI'
-
-# Wipe shell history
-function clear-history {
+function clear-history() {
     local state="${XDG_STATE_HOME:-$HOME/.local/state}"
     clear && echo "Wiping history..."
-    rm -f ~/.bash_history ~/.zsh_history \
-          "$state/bash/history" "$state/zsh/history"
+    rm -f ~/.bash_history ~/.zsh_history "$state/bash/history" "$state/zsh/history"
     [ -n "$ZSH_VERSION" ] && fc -p || history -c
     echo "Done."
 }
 
-# Bat (Alternative cat)
+# Bat (cat)
 if command -v batcat &> /dev/null; then
     alias bat='batcat'
     alias cat='batcat'
@@ -75,24 +71,20 @@ alias rm='rm -I'
 alias cp='cp -i'
 alias mv='mv -i'
 
-# Gnome terminal colors
-alias stc='dconf dump /org/gnome/terminal/legacy/profiles:/:b1dcc9dd-5262-4d8d-a863-c897e6d979b9/ > "$XDG_CONFIG_HOME/terminal/tcs-gruvbox.dconf"'
-alias ltc='dconf load /org/gnome/terminal/legacy/profiles:/:b1dcc9dd-5262-4d8d-a863-c897e6d979b9/ < "$XDG_CONFIG_HOME/terminal/tcs-gruvbox.dconf"'
-alias etc='${EDITOR:-nano} "$XDG_CONFIG_HOME/terminal/tcs-gruvbox.dconf"'
-
-# Kitty
+# Tool Configs
 alias kittyconf='${EDITOR:-nano} "$XDG_CONFIG_HOME/kitty/kitty.conf"'
 alias reloadkitty='kill -SIGUSR1 $KITTY_PID'
+alias kittyupdate='curl -L https://sw.kovidgoyal.net/kitty/installer.sh | sh /dev/stdin launch=n'
 alias img='kitty +kitten icat'
 
-# Package management
+# Package Manager
 alias s='apt search'
 alias i='sudo apt install'
 alias u='sudo apt update && sudo apt upgrade -y'
 alias r='sudo apt remove --purge'
 alias ar='sudo apt autoremove'
 
-# Git shortcuts
+# Git
 alias g='git'
 alias ga='git add'
 alias gc='git commit -m'
@@ -101,12 +93,10 @@ alias gl='git pull'
 alias gst='git status'
 alias gd='git diff'
 
-# System utilities
-alias df='df -h'     # Human-readable disk usage
-alias free='free -m' # Memory in MB
+# System
+alias df='df -h'
+alias free='free -m'
 alias ports='netstat -tulanp'
 alias myip='curl -s https://ifconfig.me && echo'
 alias killport='fuser -k -n tcp'
-
-# Sync
 alias sync='~/Dev/dotfiles/linux/install.sh'

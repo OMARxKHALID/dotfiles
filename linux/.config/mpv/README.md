@@ -1,62 +1,45 @@
-# MPV / Celluloid Configuration & Scripts
+# MPV Configuration & Premium Scripts
 
-This folder contains mpv configuration and custom scripts used by both `mpv` and GUI frontends like `Celluloid`.
+A high-performance MPV configuration optimized for Wayland, featuring a custom OSD search engine and automated watch history tracking.
 
-## Features
+## Core Features
 
-### 1. High-Performance Playback (`mpv.conf`)
-- **GPU Acceleration**: Uses `gpu-hq` profile for superior scaling and sharp visuals.
-- **Hardware Decoding**: Enabled `auto-safe` to minimize CPU usage and battery drain.
-- **Improved Caching**: Large 400MiB buffer to prevent stuttering on high-bitrate media.
-- **Premium Aesthetics**: Bold, readable subtitle styling with semi-transparent shadows for all environments.
-- **ModernX OSC**: Beautifully designed on-screen controller with smooth animations and clean icons.
-- **Customized OSD**: Styled with `JetBrainsMono Nerd Font`.
+- **GPU Acceleration**: Uses `gpu-next` and `gpu-hq` for premium scaling and sharp visuals.
+- **Hardware Decoding**: Enabled `auto-safe` for efficient playback.
+- **Wayland Optimized**: Specific fixes for black-area glitches on Wayland sessions.
+- **Elite Typography**: Bold, readable JetBrainsMono subtitles and OSD interface.
 
-### 2. Auto Subtitle Downloader & Syncer (`autosub.lua`)
-This script automatically searches and downloads English subtitles from multiple sources and provides one-click synchronization.
+## Premium Scripts
 
-- **Auto Download**: Subtitles are fetched automatically for local videos (>15 mins).
-- **Multiple Sources**: Tries 7 providers in order (OpenSubtitles, Addic7ed/Gestdown, Podnapisi, etc.).
-- **Auto Sync**: Shift out-of-sync subtitles using `ffsubsync` (via `auditok`).
-- **Dynamic Sandbox Escape**: Automatically detects if running in Flatpak and escapes the sandbox via `flatpak-spawn`.
-- **Error Logging**: Detailed error reports are saved to `error.txt` in the video's directory if a search or sync fails.
-
----
-
-## Dependencies
-Ensure the following host packages are installed (installation via `pipx` is recommended):
-
-```bash
-pipx install subliminal  # Subtitle downloader
-pipx install ffsubsync   # Subtitle synchronizer
-pipx inject ffsubsync setuptools
-```
-*Note: `ffmpeg` must be present on your system path.*
-
----
-
-## Flatpak Overrides (Celluloid specific)
-If using Celluloid from Flathub, grant these permissions to allow script execution on the host:
-
-```bash
-flatpak override --user --filesystems=home io.github.celluloid_player.Celluloid
-flatpak override --user --talk-name=org.freedesktop.Flatpak io.github.celluloid_player.Celluloid
-```
-
----
+| Script | Purpose |
+| :--- | :--- |
+| **Command Palette** | Searchable UI for commands, fonts, and tracks. |
+| **Integrated History** | Keeps your last 20 videos at your fingertips. |
+| **Font Switcher** | Live preview and switcher for premium fonts. |
+| **Auto Subtitles** | Downloads English subtitles from multiple providers. |
+| **Thumbfast** | High-performance, low-latency thumbnails on hover. |
 
 ## Keybindings
 
 | Key | Action |
-| --- | --- |
-| `b` | **Cycle Source**: Fetch the next provider for the current movie. |
-| `Shift + s` | **Auto-Sync**: Perfectly sync the current sub to audio (takes ~1 min). |
-| `j` | **Cycle Track**: Cycle through all available subtitles. |
-| `[` / `]` | **Speed Control**: Decrease or increase playback speed. |
-| `{` | **Reset Speed**: Set playback speed back to 1.0x. |
-| `z` / `x` | **Manual Sync**: Shift subtitle timing by +/- 100ms. |
-| `Shift + z/x` | **Bulk Sync**: Shift subtitle timing by +/- 1 second. |
-| `i` | **Stats Overlay**: Toggle detailed technical performance stats. |
-| `s` | **Screenshot**: Capture the screen with subtitles. |
-| `c` | **Clean Screenshot**: Capture the video only (no subs/OSD). |
-| `Wheel Up/Down`| **Volume**: High-precision volume control (2% steps). |
+| :--- | :--- |
+| **Ctrl+Shift+P** | **Command Palette**: Searchable interface for everything. |
+| **Right Click** | **Context Palette**: Quick access to tracks, fonts, and history. |
+| **r** | **Download Sub**: Trigger subtitle search via `autosub`. |
+| **S** | **Sync Sub**: Automatically synchronize current subtitle to audio. |
+| **[` / `]** | **Speed Control**: Decrease or increase playback speed (1.1x). |
+| **z** / **x** | **Manual Sync**: Shift subtitle timing by +/- 100ms. |
+| **i** | **Stats Overlay**: Toggle technical performance stats. |
+| **s** | **Screenshot**: Capture the screen with subtitles. |
+| **Shift+c** | **Clean Screenshot**: Video only (no subtitles/OSD). |
+| **Wheel Up/Down**| **Volume Control**: High-precision 2% steps. |
+
+---
+
+## Technical Dependencies
+
+| Resource | Purpose |
+| :--- | :--- |
+| **JetBrainsMono NF** | Required for icons and searchable OSD. |
+| **subliminal** | Required for `autosub` search functionality. |
+| **ffsubsync** | Required for `autosub` synchronization features. |

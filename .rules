@@ -1,0 +1,37 @@
+# Dotfiles Development Rules
+
+Follow these strict guidelines when adding or modifying any configuration files in this repository.
+
+## 🎨 Unified Aesthetic
+
+-   **Theme**: Always stick to the **Gruvbox Dark / Minimalist** aesthetic. 
+-   **Font**: The default font is always **JetBrainsMono Nerd Font**. Use it for terminal configurations, OSD elements, and subtitles.
+-   **Structure**: Keep configurations modular and clean. Avoid deeply nested or redundant settings.
+
+## 📝 Coding & Comment Style
+
+-   **Minimalist Headers**: Never use decorative bars (e.g., `====`, `----`, `####`). Use simple, clean headers:
+    -   `# Section` for Shell/Bash/Config files.
+    -   `-- Section` for Lua scripts.
+-   **Concise Logic**: Aim for minimalist and efficient logic in all scripts.
+-   **No Extra Comments**: Remove "fluff," boilerplate descriptions, or redundant installation instructions within configuration files.
+
+## 📚 Documentation Pattern
+
+README files (root and subdirectories) must follow the **Unified Table Pattern**:
+
+-   **File Structure Table**: Use a table to describe the purpose of files/folders.
+-   **Tool/Feature Table**: Use a table to explain why a tool or feature is included.
+-   **Quick setup**: Keep setup steps as a clean numbered list.
+
+## 🎬 MPV Standards
+
+-   **Backend**: Use `vo=gpu-next` and `profile=gpu-hq`.
+-   **Environment**: Always optimize for **Wayland**.
+-   **Scripting**: Favor integrated functionality (like the internal History handler in `command_palette.lua`) over external dependencies.
+-   **OSD**: Keep the OSD and Command Palette minimalist and searchable.
+
+## 🛠️ Maintenance
+
+-   **Backup first**: Always ensure the `install.sh` script handles backups of existing configurations.
+-   **No Placeholders**: Never leave placeholder comments or unfinished configuration blocks.

@@ -1,24 +1,42 @@
 # Windows Dotfiles
 
-PowerShell + Starship prompt setup with VS Code config.
+A high-performance Windows development environment featuring PowerShell, Starship prompt, and a minimalist VS Code configuration.
 
-## What's Here
+## File Structure
 
-| File                                        | What it does                                          |
-| ------------------------------------------- | ----------------------------------------------------- |
-| `terminal/microsoft.powershell_profile.ps1` | PowerShell profile (Starship, icons, fzf, PSReadLine) |
-| `terminal/starship.toml`                    | Starship prompt theme                                 |
-| `terminal/starship.md`                      | How to install Starship                               |
-| `terminal/icons.md`                         | Terminal-Icons setup                                  |
-| `vscode/settings.json`                      | VS Code settings (minimal UI, Vim Dark Soft theme)    |
-| `vscode/extensions.md`                      | List of VS Code extensions                            |
-| `nerd-font.md`                              | JetBrains Mono Nerd Font install                      |
+| File / Folder | Purpose |
+| :--- | :--- |
+| `microsoft.powershell_profile.ps1` | PowerShell profile with Starship, icons, fzf, and PSReadLine. |
+| `starship.toml` | **[Starship]** Modern, ultra-fast shell prompt theme. |
+| `settings.json` | **[VS Code]** Minimalist UI with Vim Dark Soft theme and premium typography. |
+| `extensions.md` | Essential list of curated VS Code extensions. |
 
-## Setup
+## Quick Setup
 
-1. Install [JetBrains Mono Nerd Font](https://www.nerdfonts.com/font-downloads)
-2. Install Starship: `winget install starship`
-3. Copy `terminal/starship.toml` to `~/.config/starship/starship.toml`
-4. Copy `terminal/microsoft.powershell_profile.ps1` to your `$PROFILE` path
-5. Copy `vscode/settings.json` to your VS Code settings
-6. Reload PowerShell: `. $PROFILE`
+1.  **Install JetBrainsMono Nerd Font** (Required for icons and UI).
+2.  **Install Starship**: 
+    ```powershell
+    winget install starship
+    ```
+3.  **Copy configurations**:
+    *   `starship.toml` -> `~/.config/starship/starship.toml`
+    *   `microsoft.powershell_profile.ps1` -> `$PROFILE`
+    *   `settings.json` -> VS Code Settings path.
+
+## Unified Aesthetic
+
+All Windows configurations follow the same minimalist styling:
+- **Font**: JetBrainsMono Nerd Font.
+- **Theme**: Gruvbox / Vim Dark Soft for a cohesive, professional look.
+- **Headers**: Clean, clutter-free section markers.
+
+---
+
+## Core Toolset
+
+| Tool | Why? |
+| :--- | :--- |
+| **PowerShell** | Advanced 7.x+ build for a modern, cross-platform CLI experience. |
+| **Starship** | The most customizable, cross-shell prompt in existence. |
+| **fzf** | Seamless fuzzy finding for history and file navigation. |
+| **VS Code** | Ultra-clean, distraction-free IDE optimized for rapid development. |

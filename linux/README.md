@@ -1,54 +1,49 @@
 # Linux Dotfiles
 
-Zsh + Bash shell with kitty terminal config with Powerlevel10k, zinit, bat, eza, zoxide, yazi and fzf.
+A high-performance Linux development environment built with Zsh, Bash, Kitty, and MPV. Focuses on speed, minimalism, and a unified aesthetic.
 
-## What's Here
+## File Structure
 
-| File              | What it does                                                 |
-| ----------------- | ------------------------------------------------------------ |
-| `.zshenv`         | Bootstrap — sets ZDOTDIR, sources the real config            |
-| `.profile`        | Login environment for Bash and display manager (XDG, EDITOR) |
-| `.bashrc`         | Bash interactive config (history, prompt, completion)        |
-| `.config/aliasrc` | Shared aliases used by both Bash and Zsh                     |
+| File / Folder     | Purpose                                                  |
+| :---------------- | :------------------------------------------------------- |
+| `.bashrc`         | Interactive Bash configuration and shell environment.    |
+| `.zshenv`         | Zsh environment bootstrap.                               |
+| `.profile`        | Global login environment variables for all shells.       |
+| `.config/zsh/`    | Modern Zsh setup with Zinit and Powerlevel10k.           |
+| `.config/mpv/`    | **[MPV]** Highly optimized media player with scripts.    |
+| `.config/kitty/`  | **[Kitty]** High-speed terminal emulator with ligatures. |
+| `.config/yazi/`   | **[Yazi]** Blazing fast terminal file manager.           |
+| `.config/aliasrc` | Unified aliases shared between Bash and Zsh.             |
 
-| `.config/zsh/` | Zsh environment and interactive configuration |
-| `.config/kitty/` | Kitty terminal configuration |
-| `.config/terminal/` | GNOME Terminal color scheme (Gruvbox) |
-| `.config/bat/` | Bat (cat replacement) configuration |
-| `.config/yazi/` | Yazi terminal file manager configuration |
-| `.config/mpv/` | MPV and Celluloid config (Auto Subtitles & Sync) |
-| `.config/dircolors` | LS_COLORS configuration |
+## Quick Setup
 
-## How Shell Startup Works
+1.  **Install JetBrainsMono Nerd Font** (Required for icons and UI).
+2.  **Clone this repo** into `~/Dev/dotfiles`.
+3.  **Run the install script**:
+    ```bash
+    chmod +x linux/install.sh
+    ./linux/install.sh
+    ```
 
-```
-Zsh:   ~/.zshenv → ~/.config/zsh/.zshenv → ~/.config/zsh/.zshrc
-Bash:  ~/.profile → ~/.bashrc
-Both:  → ~/.config/aliasrc (shared aliases)
-```
+## Unified Aesthetic
 
-## Setup
+All configuration files follow a strict minimalist styling:
 
-1. Install zsh: `sudo apt install zsh`
-2. Set zsh as default: `chsh -s $(which zsh)`
-3. Install [JetBrains Mono Nerd Font](https://www.nerdfonts.com/font-downloads)
-4. Use the installation script to symlink everything:
+- **Font**: JetBrainsMono Nerd Font.
+- **Theme**: Gruvbox Dark.
+- **Headers**: Consistent, clutter-free comment style.
 
-```bash
-chmod +x linux/install.sh
-./linux/install.sh
-```
+---
 
-5. Load terminal theme: `dconf load /org/gnome/terminal/legacy/profiles:/:b1dcc9dd-5262-4d8d-a863-c897e6d979b9/ < ~/.config/terminal/tcs-gruvbox.dconf`
-6. Open a new terminal — zinit will auto-install plugins on first run
+## Core Toolset
 
-## Tools
-
-- **[yazi](https://github.com/sxyazi/yazi)** — blazing fast terminal file manager
-- **[zinit](https://github.com/zdharma-continuum/zinit)** — plugin manager (auto-installs)
-- **[Powerlevel10k](https://github.com/romkatv/powerlevel10k)** — prompt theme
-- **[fzf](https://github.com/junegunn/fzf)** — fuzzy finder (Ctrl+R for history)
-- **[bat](https://github.com/sharkdp/bat)** — better cat (aliased automatically if installed)
-- **[eza](https://github.com/eza-community/eza)** — modern `ls` replacement with icons
-- **[zoxide](https://github.com/ajeetdsouza/zoxide)** — smarter `cd` command
-- **[ripgrep](https://github.com/BurntSushi/ripgrep)** — fast search (used by fzf)
+| Tool              | Why?                                                           |
+| :---------------- | :-------------------------------------------------------------- |
+| **MPV**           | State-of-the-art media player with custom OSD Search & History. |
+| **Kitty**         | GPU-accelerated terminal with superior latency and ligatures.   |
+| **Yazi**          | Modern, blazing-fast terminal file manager written in Rust.     |
+| **Zinit**         | Powerful, fast Zsh plugin manager for instant startup.          |
+| **Powerlevel10k** | Highly configurable, instantaneous prompt theme.                |
+| **fzf**           | Frictionless fuzzy finder for history, files, and commands.     |
+| **bat**           | Modern alternative to `cat` with syntax highlighting.           |
+| **zoxide**        | Smarter `cd` command that learns your habits.                   |

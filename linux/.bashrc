@@ -1,6 +1,6 @@
 # Bash Config
 
-# Exit early if not interactive
+# Interactive Check
 case $- in *i*) ;; *) return;; esac
 
 # History
@@ -14,7 +14,7 @@ mkdir -p "${HISTFILE%/*}" 2>/dev/null
 # Options
 shopt -s checkwinsize
 
-# Prompt (Minimalist)
+# Prompt
 PS1='\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ '
 
 # Aliases
@@ -28,4 +28,6 @@ if ! shopt -oq posix; then
     . /etc/bash_completion
   fi
 fi
-. "$HOME/.cargo/env"
+
+# Tooling
+[ -f "$HOME/.cargo/env" ] && . "$HOME/.cargo/env"

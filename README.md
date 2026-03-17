@@ -1,41 +1,29 @@
 # Dotfiles
 
-My development environment configs for Windows and Linux.
+My development environment configurations for Windows and Linux. Highly optimized for a minimalist and efficient workflow with a unified aesthetic.
 
-## Structure
+## Projects
 
-```
-├── windows/          # PowerShell, Starship, VS Code
-│   ├── terminal/     # Starship config + PowerShell profile
-│   ├── vscode/       # Settings + extensions
-│   └── nerd-font.md  # Font setup
-│
-└── linux/            # Zsh, Bash, shell config
-    ├── .zshenv       # Bootstrap (sets ZDOTDIR)
-    ├── .profile      # Login env for Bash/GDM
-    ├── .bashrc       # Bash interactive config
+| Platform | Navigation | Description |
+| :--- | :--- | :--- |
+| **Linux** | **[linux/README.md](linux/README.md)** | Zsh, Bash, Kitty Terminal, Yazi, and MPV. |
+| **Windows** | **[windows/README.md](windows/README.md)** | PowerShell, Starship, and VS Code. |
 
-    └── .config/
-        ├── aliasrc   # Shared aliases (Bash + Zsh)
-        ├── bat/
-        │   └── config             # Bat configuration
-        ├── kitty/
-        │   └── kitty.conf         # Kitty terminal configuration
-        ├── terminal/
-        │   └── tcs-gruvbox.dconf  # GNOME Terminal color scheme
-        ├── yazi/         # Yazi file manager configuration
-        ├── mpv/          # MPV & Celluloid config (Auto Subs & Sync)
-        ├── dircolors     # LS_COLORS configuration
-        └── zsh/
-            ├── .zshenv   # Zsh environment (XDG, PATH)
-            ├── .zshrc    # Zsh interactive (plugins, prompt)
-            └── .p10k.zsh # Powerlevel10k theme
-```
+## Core Tools
 
-## Setup
+| Tool | Purpose |
+| :--- | :--- |
+| **[MPV](linux/.config/mpv/)** | High-performance media player with Command Palette & Search. |
+| **[Kitty](linux/.config/kitty/)** | Fast, GPU-accelerated terminal with advanced ligatures. |
+| **[Yazi](linux/.config/yazi/)** | Modern, blazing-fast terminal file manager written in Rust. |
+| **[Zsh](linux/.config/zsh/)** | Feature-rich shell with P10k and Zinit plugin management. |
 
-- **Windows** → see [`windows/README.md`](windows/README.md)
-- **Linux** → see [`linux/README.md`](linux/README.md)
+## Unified Design
+
+All configuration files follow a strict minimalist pattern defined in **[.rules](.rules)**:
+- **Font**: JetBrainsMono Nerd Font.
+- **Headers**: Simple, uncluttered section marking.
+- **Theme**: Gruvbox Dark for a comfortable, professional look.
 
 ## License
 
