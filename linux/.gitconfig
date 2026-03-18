@@ -27,10 +27,6 @@
 	# Cleanup
 	unstage = restore --staged
 	discard = restore
-	
-[commit]
-	template = ~/.gitmessage # link if needed
-
 [pull]
 	rebase = false
 
