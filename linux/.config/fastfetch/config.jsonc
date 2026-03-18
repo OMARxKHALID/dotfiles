@@ -1,0 +1,85 @@
+{
+  "$schema": "https://github.com/fastfetch-cli/fastfetch/raw/master/doc/json_schema.json",
+  "display": {
+    "key": {
+      "width": 0
+    },
+    "size": {
+      "binaryPrefix": "jedec"
+    },
+    "separator": " 󰄾 "
+  },
+  "logo": {
+    "type": "auto",
+    "source": "/home/omar/.config/fastfetch/logo.txt",
+    "width": null,
+    "height": 15,
+    "padding": {
+      "top": 0,
+      "left": 0
+    }
+  },
+  "modules": [
+    "break",
+    {
+      "type": "title",
+      "color": {
+        "user": "red",
+        "at": "white",
+        "host": "yellow"
+      }
+    },
+    "separator",
+    {
+      "type": "os",
+      "key": "󰂺  OS",
+      "keyColor": "red"
+    },
+    {
+      "type": "kernel",
+      "key": "󰌽  KR",
+      "keyColor": "green"
+    },
+    {
+      "type": "uptime",
+      "key": "󰅐  UP",
+      "keyColor": "yellow"
+    },
+    {
+      "type": "packages",
+      "key": "󰏖  PK",
+      "keyColor": "blue"
+    },
+    {
+      "type": "shell",
+      "key": "󰞷  SH",
+      "keyColor": "magenta"
+    },
+    {
+      "type": "terminal",
+      "key": "󰆍  TM",
+      "keyColor": "cyan"
+    },
+    {
+      "type": "memory",
+      "key": "󰍛  ME",
+      "keyColor": "red"
+    },
+    {
+      "type": "gpu",
+      "key": "󰢮  GP",
+      "keyColor": "green"
+    },
+    "break",
+    {
+      "type": "wm",
+      "key": "󱂬  WM",
+      "keyColor": "33"
+    },
+    "break",
+    {
+      "type": "custom",
+      "format": "{#33}󰮯 {#32}󰊠 {#34}󰊠 {#31}󰊠 {#36}󰊠 {#35}󰊠 {#37}󰊠 {#38}󰊠"
+    }
+  ]
+}

@@ -12,8 +12,13 @@ A high-performance Linux development environment built with Zsh, Bash, Kitty, an
 | `.config/zsh/`    | Modern Zsh setup with Zinit and Powerlevel10k.           |
 | `.config/mpv/`    | **[MPV]** Highly optimized media player with scripts.    |
 | `.config/kitty/`  | **[Kitty]** High-speed terminal emulator with ligatures. |
-| `.config/yazi/`   | **[Yazi]** Blazing fast terminal file manager.           |
-| `.config/aliasrc` | Unified aliases shared between Bash and Zsh.             |
+| `.config/yazi/`      | **[Yazi]** Blazing fast terminal file manager.           |
+| `.config/aliasrc`    | Unified aliases shared between Bash and Zsh.             |
+| `.config/fastfetch/` | **[Fastfetch]** System info with custom ASCII logo.      |
+| `.config/tealdeer/`  | **[Tealdeer]** High-speed tldr implementation.           |
+| `.config/bat/`       | Syntax highlighting profiles for bat.                   |
+| `.config/dircolors`  | Terminal color definitions for ls/eza.                  |
+| `.gitconfig`         | Global git identity and development aliases.             |
 
 ## Quick Setup
 
@@ -47,3 +52,6 @@ All configuration files follow a strict minimalist styling:
 | **fzf**           | Frictionless fuzzy finder for history, files, and commands.     |
 | **bat**           | Modern alternative to `cat` with syntax highlighting.           |
 | **zoxide**        | Smarter `cd` command that learns your habits.                   |
+| **fastfetch**     | Blazing fast system information tool (successor to neofetch).   |
+| **tealdeer**      | Fast Rust implementation of tldr for quick command cheatsheets. |
+| **dust**          | Visual, Rust-powered disk usage analyzer.                       |

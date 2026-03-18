@@ -1,0 +1,44 @@
+[user]
+	name = omar
+	email = mirxaumar1212@gmail.com
+
+[core]
+	editor = nano
+	autocrlf = input
+	# pager = delta # if you want to use delta next
+
+[init]
+	defaultBranch = main
+
+[alias]
+	# Basic commands
+	st = status
+	co = checkout
+	sw = switch
+	cm = commit -m
+	aa = add --all
+	ps = push
+	pl = pull
+	
+	# Visual log
+	lg = log --graph --abbrev-commit --decorate --format=format:'%C(bold blue)%h%C(reset) - %C(bold green)(%ar)%C(reset) %C(white)%s%C(reset) %C(dim white)- %an%C(reset)%C(bold yellow)%d%C(reset)' --all
+	last = log -1 HEAD
+	
+	# Cleanup
+	unstage = restore --staged
+	discard = restore
+	
+[commit]
+	template = ~/.gitmessage # link if needed
+
+[pull]
+	rebase = false
+
+[color]
+	ui = auto
+
+[filter "lfs"]
+	clean = git-lfs clean -- %f
+	smudge = git-lfs smudge -- %f
+	process = git-lfs filter-process
+	required = true
