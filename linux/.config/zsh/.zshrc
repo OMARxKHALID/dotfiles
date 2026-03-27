@@ -112,3 +112,6 @@ fi
 # Section: Utils
 alias zshrc='${EDITOR:-nano} $ZDOTDIR/.zshrc'
 alias reloadzsh='source $ZDOTDIR/.zshrc'
+
+# opencode
+export PATH=/home/omar/.opencode/bin:$PATH
