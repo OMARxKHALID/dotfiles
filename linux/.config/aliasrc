@@ -69,13 +69,10 @@ alias reloadzsh='source $ZDOTDIR/.zshrc'
 alias zshrc='${EDITOR:-nano} $ZDOTDIR/.zshrc'
 
 # Section: Kitty & Helpers
-alias helium='( /home/omar/AppImages/helium.appimage >/dev/null 2>&1 & )'
 alias kittyconf='${EDITOR:-nano} "$XDG_CONFIG_HOME/kitty/kitty.conf"'
 alias reloadkitty='kill -SIGUSR1 $KITTY_PID'
 alias img='kitty +kitten icat'
 alias kittyupdate='curl -L https://sw.kovidgoyal.net/kitty/installer.sh | sh /dev/stdin'
-
-
 
 # Section: Safety
 alias rm='rm -I'
