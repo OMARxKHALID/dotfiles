@@ -44,3 +44,5 @@ build/
 **/.venv/
 **/node_modules/
 .rules
+privatekey
+publickey

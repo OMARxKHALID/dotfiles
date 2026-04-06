@@ -115,3 +115,6 @@ alias reloadzsh='source $ZDOTDIR/.zshrc'
 
 # opencode
 export PATH=/home/omar/.opencode/bin:$PATH
+
+# bun completions
+[ -s "/home/omar/.bun/_bun" ] && source "/home/omar/.bun/_bun"
