@@ -64,7 +64,7 @@ alias free='free -m'
 alias ports='netstat -tulanp'
 alias myip='curl -s https://ifconfig.me && echo'
 alias killport='fuser -k -n tcp'
-alias sync='~/Dev/dotfiles/linux/install.sh'
+alias sync='$HOME/Dev/dotfiles/linux/install.sh'
 alias reloadzsh='source $ZDOTDIR/.zshrc'
 alias zshrc='${EDITOR:-nano} $ZDOTDIR/.zshrc'
 
@@ -109,6 +109,15 @@ function fr() {
     local file
     file=$(rg --files --hidden --glob "!.git/*" | fzf)
     [ -n "$file" ] && ${EDITOR:-nano} "$file"
+}
+
+# Section: Antigravity
+function aa() {
+    if [ "$1" = "." ]; then
+        antigravity .
+    else
+        antigravity
+    fi
 }
 
 # Section: VPN & WireGuard

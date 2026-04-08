@@ -6,10 +6,7 @@ typeset -g POWERLEVEL9K_INSTANT_PROMPT=quiet
     source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
 
 # Section: Environment
-export ZDOTDIR="$HOME/.config/zsh"
 export PATH="$HOME/.local/bin:$HOME/bin:/usr/local/bin:$PATH"
-export EDITOR="nano"
-export VISUAL="nano"
 
 # Section: Zinit
 if [[ ! -f "$HOME/.zinit/bin/zinit.zsh" ]]; then
@@ -77,12 +74,11 @@ zstyle ':completion:*' matcher-list 'm:{a-z}={A-Za-z}'
 zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"
 zstyle ':completion:*' menu no
 zstyle ':fzf-tab:complete:cd:*' fzf-preview 'ls --color $realpath'
-ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=8'
 
 # Section: FZF Theme (Gruvbox)
 export FZF_DEFAULT_OPTS="${FZF_DEFAULT_OPTS} \
   --history=${XDG_STATE_HOME:-$HOME/.local/state}/fzf/history \
-  --color=bg+:#3c3836,bg:#282828,spinner:#fb4934,hl:#928374 \
+  --color=bg+:#3c3836,bg:#1d2021,spinner:#fb4934,hl:#928374 \
   --color=fg:#ebdbb2,header:#928374,info:#8ec07c,pointer:#fb4934 \
   --color=marker:#fb4934,fg+:#ebdbb2,prompt:#fb4934,hl+:#fb4934"
 
@@ -114,7 +110,7 @@ alias zshrc='${EDITOR:-nano} $ZDOTDIR/.zshrc'
 alias reloadzsh='source $ZDOTDIR/.zshrc'
 
 # opencode
-export PATH=/home/omar/.opencode/bin:$PATH
+export PATH=$HOME/.opencode/bin:$PATH
 
 # bun completions
-[ -s "/home/omar/.bun/_bun" ] && source "/home/omar/.bun/_bun"
+[ -s "$HOME/.bun/_bun" ] && source "$HOME/.bun/_bun"

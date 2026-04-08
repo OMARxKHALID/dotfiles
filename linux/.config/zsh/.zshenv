@@ -14,6 +14,7 @@ export EDITOR="nano"
 export VISUAL="$EDITOR"
 export INPUTRC="$XDG_CONFIG_HOME/readline/inputrc"
 export LESSHISTFILE="$XDG_STATE_HOME/less/history"
+export ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=8'
 
 
 # PATH

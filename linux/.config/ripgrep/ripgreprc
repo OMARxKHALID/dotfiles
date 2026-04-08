@@ -1,0 +1,33 @@
+# Ripgrep Config
+
+# Ignore patterns
+--glob=!.git/*
+--glob=!node_modules/*
+--glob=!vendor/*
+--glob=!*.lock
+--glob=!package-lock.json
+--glob=!yarn.lock
+--glob=!pnpm-lock.yaml
+--glob=!dist/*
+--glob=!build/*
+--glob=!.next/*
+--glob=!target/*
+
+# Smart case (case-insensitive unless uppercase in pattern)
+--smart-case
+
+# Line number
+--line-number
+
+# Colors (Gruvbox theme)
+--colors=line:fg:#ebdbb2
+--colors=match:fg:#fb4934:bg:#3c3836:bold
+--colors=path:fg:#83a598
+--colors=separator:fg:#928374
+--colors=context:fg:#a89984
+
+# Show matching files
+--files
+
+# Search hidden files
+--hidden

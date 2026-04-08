@@ -11,7 +11,7 @@
   },
   "logo": {
     "type": "auto",
-    "source": "/home/omar/.config/fastfetch/logo.txt",
+    "source": "$HOME/.config/fastfetch/logo.txt",
     "width": null,
     "height": 15,
     "padding": {
@@ -24,62 +24,62 @@
     {
       "type": "title",
       "color": {
-        "user": "red",
-        "at": "white",
-        "host": "yellow"
+        "user": "#cc241d",
+        "at": "#ebdbb2",
+        "host": "#d79921"
       }
     },
     "separator",
     {
       "type": "os",
       "key": "󰂺  OS",
-      "keyColor": "red"
+      "keyColor": "#cc241d"
     },
     {
       "type": "kernel",
       "key": "󰌽  KR",
-      "keyColor": "green"
+      "keyColor": "#98971a"
     },
     {
       "type": "uptime",
       "key": "󰅐  UP",
-      "keyColor": "yellow"
+      "keyColor": "#d79921"
     },
     {
       "type": "packages",
       "key": "󰏖  PK",
-      "keyColor": "blue"
+      "keyColor": "#458588"
     },
     {
       "type": "shell",
       "key": "󰞷  SH",
-      "keyColor": "magenta"
+      "keyColor": "#b16286"
     },
     {
       "type": "terminal",
       "key": "󰆍  TM",
-      "keyColor": "cyan"
+      "keyColor": "#689d6a"
     },
     {
       "type": "memory",
       "key": "󰍛  ME",
-      "keyColor": "red"
+      "keyColor": "#cc241d"
     },
     {
       "type": "gpu",
       "key": "󰢮  GP",
-      "keyColor": "green"
+      "keyColor": "#98971a"
     },
     "break",
     {
       "type": "wm",
       "key": "󱂬  WM",
-      "keyColor": "33"
+      "keyColor": "#928374"
     },
     "break",
     {
       "type": "custom",
-      "format": "{#33}󰮯 {#32}󰊠 {#34}󰊠 {#31}󰊠 {#36}󰊠 {#35}󰊠 {#37}󰊠 {#38}󰊠"
+      "format": "{##928374}󰮯 {##98971a}󰊠 {##458588}󰊠 {##cc241d}󰊠 {##689d6a}󰊠 {##b16286}󰊠 {##928374}󰊠"
     }
   ]
 }
