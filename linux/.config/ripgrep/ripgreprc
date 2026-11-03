@@ -20,14 +20,12 @@
 --line-number
 
 # Colors (Gruvbox theme)
---colors=line:fg:#ebdbb2
---colors=match:fg:#fb4934:bg:#3c3836:bold
---colors=path:fg:#83a598
---colors=separator:fg:#928374
---colors=context:fg:#a89984
-
-# Show matching files
---files
+--colors=line:fg:0xeb,0xdb,0xb2
+--colors=match:fg:0xfb,0x49,0x34
+--colors=match:bg:0x3c,0x38,0x36
+--colors=match:style:bold
+--colors=path:fg:0x83,0xa5,0x98
+--colors=column:fg:0x92,0x83,0x74
 
 # Search hidden files
 --hidden

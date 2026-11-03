@@ -5,9 +5,6 @@ typeset -g POWERLEVEL9K_INSTANT_PROMPT=quiet
 [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]] && \
     source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
 
-# Section: Environment
-export PATH="$HOME/.local/bin:$HOME/bin:/usr/local/bin:$PATH"
-
 # Section: Zinit
 if [[ ! -f "$HOME/.zinit/bin/zinit.zsh" ]]; then
     command mkdir -p "$HOME/.zinit"
@@ -20,6 +17,7 @@ zinit ice depth=1; zinit light romkatv/powerlevel10k
 zinit light zsh-users/zsh-completions
 
 # Section: Completion System
+setopt extendedglob
 autoload -Uz compinit
 _comp_path="${XDG_CACHE_HOME:-$HOME/.cache}/zsh/zcompdump-${(%):-%n}"
 if [[ -n "$_comp_path"(#qN.mh+24) ]]; then
@@ -47,8 +45,9 @@ zinit light junegunn/fzf
 
 # Section: Plugins (Lazy)
 zinit ice wait"0a" lucid; zinit light Aloxaf/fzf-tab
+export ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=8'
 zinit ice wait"0b" lucid; zinit light zsh-users/zsh-autosuggestions
-zinit ice wait"0c" lucid atinit"zpcompinit; zpcdreplay"; zinit light zsh-users/zsh-syntax-highlighting
+zinit ice wait"0c" lucid; zinit light zsh-users/zsh-syntax-highlighting
 
 # Section: History
 HISTFILE="${XDG_STATE_HOME:-$HOME/.local/state}/zsh/history"
@@ -73,7 +72,7 @@ CORRECT_IGNORE='.*'
 zstyle ':completion:*' matcher-list 'm:{a-z}={A-Za-z}'
 zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"
 zstyle ':completion:*' menu no
-zstyle ':fzf-tab:complete:cd:*' fzf-preview 'ls --color $realpath'
+zstyle ':fzf-tab:complete:cd:*' fzf-preview 'eza -1 --color=always --icons=always $realpath'
 
 # Section: FZF Theme (Gruvbox)
 export FZF_DEFAULT_OPTS="${FZF_DEFAULT_OPTS} \
@@ -94,9 +93,15 @@ export FZF_CTRL_T_OPTS="--preview '$_fzf_preview_cmd {}' --bind 'ctrl-/:change-p
 
 # Section: Integrations
 [[ -x "$(command -v zoxide)" ]] && eval "$(zoxide init zsh)"
-[[ -f "$HOME/.config/aliasrc" ]] && source "$HOME/.config/aliasrc"
+[[ -f "${XDG_CONFIG_HOME:-$HOME/.config}/aliasrc" ]] && source "${XDG_CONFIG_HOME:-$HOME/.config}/aliasrc"
 [[ -f "$ZDOTDIR/.p10k.zsh" ]] && source "$ZDOTDIR/.p10k.zsh"
-test -r ~/.config/dircolors && eval "$(dircolors -b ~/.config/dircolors)" || eval "$(dircolors -b)"
+if [[ -r "${XDG_CONFIG_HOME:-$HOME/.config}/dircolors" ]]; then
+    eval "$(dircolors -b "${XDG_CONFIG_HOME:-$HOME/.config}/dircolors")"
+else
+    eval "$(dircolors -b)"
+fi
+[[ -s "$HOME/.bun/_bun" ]] && source "$HOME/.bun/_bun"
+if command -v wt >/dev/null 2>&1; then eval "$(command wt config shell init zsh)"; fi
 
 # Section: Keybindings
 bindkey '^R' fzf-history-widget
@@ -104,13 +109,3 @@ if command -v rg &> /dev/null; then
     export FZF_DEFAULT_COMMAND='rg --files --hidden --glob "!.git/*"'
     export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
 fi
-
-# Section: Utils
-alias zshrc='${EDITOR:-nano} $ZDOTDIR/.zshrc'
-alias reloadzsh='source $ZDOTDIR/.zshrc'
-
-# opencode
-export PATH=$HOME/.opencode/bin:$PATH
-
-# bun completions
-[ -s "$HOME/.bun/_bun" ] && source "$HOME/.bun/_bun"

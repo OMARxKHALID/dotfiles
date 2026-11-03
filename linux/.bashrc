@@ -17,8 +17,10 @@ shopt -s checkwinsize
 # Prompt
 PS1='\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ '
 
-# Aliases
-[ -f "$HOME/.config/aliasrc" ] && . "$HOME/.config/aliasrc"
+# Tooling
+[ -f "$HOME/.cargo/env" ] && . "$HOME/.cargo/env"
+[ -d "$HOME/.local/bin" ] && export PATH="$HOME/.local/bin:$PATH"
+export RIPGREP_CONFIG_PATH="${XDG_CONFIG_HOME:-$HOME/.config}/ripgrep/ripgreprc"
 
 # Completion
 if ! shopt -oq posix; then
@@ -29,5 +31,14 @@ if ! shopt -oq posix; then
   fi
 fi
 
-# Tooling
-[ -f "$HOME/.cargo/env" ] && . "$HOME/.cargo/env"
+# Integrations
+if [ -r "${XDG_CONFIG_HOME:-$HOME/.config}/dircolors" ]; then
+    eval "$(dircolors -b "${XDG_CONFIG_HOME:-$HOME/.config}/dircolors")"
+else
+    eval "$(dircolors -b)"
+fi
+command -v zoxide >/dev/null 2>&1 && eval "$(zoxide init bash)"
+command -v fzf >/dev/null 2>&1 && eval "$(fzf --bash 2>/dev/null)"
+
+# Aliases
+[ -f "${XDG_CONFIG_HOME:-$HOME/.config}/aliasrc" ] && . "${XDG_CONFIG_HOME:-$HOME/.config}/aliasrc"

@@ -10,7 +10,7 @@ A minimalist, high-performance MPV configuration optimized for Wayland, featurin
 | `input.conf` | Custom keybindings and script-specific triggers. |
 | `scripts/` | Lua scripts for Command Palette, History, and Subtitles. |
 | `script-opts/` | Configuration files for script behavior. |
-| `fonts/` | Essential typography for OSD and subtitles. |
+| `fonts/` | Fluent icon font used by the ModernZ OSC. |
 
 ## Core Features
 

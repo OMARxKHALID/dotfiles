@@ -1,7 +1,7 @@
 # Zsh Environment
 
-# ZDOTDIR
-export ZDOTDIR="${XDG_CONFIG_HOME:-$HOME/.config}/zsh"
+# Section: Bootstrap
+export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+export ZDOTDIR="$XDG_CONFIG_HOME/zsh"
 
-# Bootstrap
 [[ -f "$ZDOTDIR/.zshenv" ]] && source "$ZDOTDIR/.zshenv"

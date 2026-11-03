@@ -40,11 +40,13 @@ image = [
 ]
 
 video = [
+  { run = 'mpv "$@"',                           orphan = true, desc = "mpv",                    for = "linux" },
   { run = 'xdg-open "$@"',                      orphan = true, desc = "XDG Open",               for = "linux" },
   { run = 'flatpak run org.gnome.Showtime "$@"', orphan = true, desc = "Showtime (GNOME Video)", for = "linux" },
 ]
 
 audio = [
+  { run = 'mpv --force-window "$@"',            orphan = true, desc = "mpv",                    for = "linux" },
   { run = 'xdg-open "$@"',                      orphan = true, desc = "XDG Open",               for = "linux" },
   { run = 'flatpak run org.gnome.Showtime "$@"', orphan = true, desc = "Showtime (GNOME Audio)", for = "linux" },
 ]

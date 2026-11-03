@@ -20,7 +20,7 @@ My development environment configurations for Windows and Linux. Highly optimize
 
 ## Unified Design
 
-All configuration files follow a strict minimalist pattern defined in **[.rules](.rules)**:
+All configuration files follow a strict minimalist pattern:
 - **Font**: JetBrainsMono Nerd Font.
 - **Headers**: Simple, uncluttered section marking.
 - **Theme**: Gruvbox Dark for a comfortable, professional look.

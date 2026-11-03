@@ -5,6 +5,7 @@
 [core]
 	editor = nano
 	autocrlf = input
+	excludesFile = ~/.config/git/ignore
 	# pager = delta # if you want to use delta next
 
 [init]
@@ -30,6 +31,15 @@
 [pull]
 	rebase = false
 
+[push]
+	autoSetupRemote = true
+
+[fetch]
+	prune = true
+
+[rerere]
+	enabled = true
+
 [color]
 	ui = auto
 
@@ -38,3 +48,9 @@
 	smudge = git-lfs smudge -- %f
 	process = git-lfs filter-process
 	required = true
+[credential "https://github.com"]
+	helper = 
+	helper = !gh auth git-credential
+[credential "https://gist.github.com"]
+	helper = 
+	helper = !gh auth git-credential

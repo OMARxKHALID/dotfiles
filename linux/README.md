@@ -18,17 +18,20 @@ A high-performance Linux development environment built with Zsh, Bash, Kitty, an
 | `.config/tealdeer/`  | **[Tealdeer]** High-speed tldr implementation.           |
 | `.config/bat/`       | Syntax highlighting profiles for bat.                   |
 | `.config/dircolors`  | Terminal color definitions for ls/eza.                  |
+| `.config/ripgrep/`   | Ripgrep defaults: ignores, smart case, Gruvbox colors.  |
+| `.config/readline/`  | Readline settings (case-insensitive completion).        |
+| `.config/git/`       | Global git ignore patterns.                             |
 | `.gitconfig`         | Global git identity and development aliases.             |
 
 ## Quick Setup
 
-1.  **Install JetBrainsMono Nerd Font** (Required for icons and UI).
-2.  **Clone this repo** into `~/Dev/dotfiles`.
-3.  **Run the install script**:
+1.  **Clone this repo** into `~/Dev/dotfiles`.
+2.  **Run the install script** on a fresh machine (installs `packages.txt`, Bun, Rust, Yazi, Kitty, JetBrainsMono Nerd Font, and sets Zsh as the default shell):
     ```bash
     chmod +x linux/install.sh
-    ./linux/install.sh
+    ./linux/install.sh --packages
     ```
+3.  **Re-link only** (no package installs) any time with `./linux/install.sh` or `dotsync`.
 
 ## Unified Aesthetic
 

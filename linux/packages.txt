@@ -1,0 +1,16 @@
+zsh
+git
+git-lfs
+gh
+curl
+unzip
+build-essential
+fontconfig
+eza
+bat
+ripgrep
+fd-find
+zoxide
+mpv
+wireguard-tools
+pipx

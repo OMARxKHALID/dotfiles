@@ -28,18 +28,14 @@ fi
 # Section: Modern Tool Replacements
 if command -v batcat &> /dev/null; then
     alias bat='batcat'
-    alias cat='batcat'
     alias catp='batcat -p'
 elif command -v bat &> /dev/null; then
-    alias bat='bat'
-    alias cat='bat'
     alias catp='bat -p'
 fi
 
 alias nf='fastfetch'
 alias fetch='nf'
-alias tldr='tldr'
-alias du='dust'
+alias dus='dust'
 
 # Section: Git Flow
 alias g='git'
@@ -61,10 +57,10 @@ alias cls='clear'
 alias h='history'
 alias df='df -h'
 alias free='free -m'
-alias ports='netstat -tulanp'
+alias ports='ss -tulpn 2>/dev/null || netstat -tulanp'
 alias myip='curl -s https://ifconfig.me && echo'
 alias killport='fuser -k -n tcp'
-alias sync='$HOME/Dev/dotfiles/linux/install.sh'
+alias dotsync='$HOME/Dev/dotfiles/linux/install.sh'
 alias reloadzsh='source $ZDOTDIR/.zshrc'
 alias zshrc='${EDITOR:-nano} $ZDOTDIR/.zshrc'
 
@@ -111,16 +107,15 @@ function fr() {
     [ -n "$file" ] && ${EDITOR:-nano} "$file"
 }
 
-# Section: Antigravity
-function aa() {
-    if [ "$1" = "." ]; then
-        antigravity .
-    else
-        antigravity
-    fi
-}
-
 # Section: VPN & WireGuard
 alias vpnup='sudo wg-quick up wg0'
 alias vpndown='sudo wg-quick down wg0'
 alias vstatus='sudo wg show'
+
+# Section: Browser Tools
+alias agent-browser='nocorrect agent-browser'
+
+# Section: Laptop Hardware Controls
+alias kboff='echo 1 | sudo tee /sys/devices/platform/i8042/serio0/input/input*/inhibited >/dev/null && echo "Laptop keyboard OFF"'
+alias kbon='echo 0 | sudo tee /sys/devices/platform/i8042/serio0/input/input*/inhibited >/dev/null && echo "Laptop keyboard ON"'
+alias kbstatus='cat /sys/devices/platform/i8042/serio0/input/input*/inhibited'

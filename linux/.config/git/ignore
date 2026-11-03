@@ -1,0 +1,16 @@
+# Global Git Ignore
+
+# AI & Editor Local Configs
+**/.claude/settings.local.json
+.vscode/*.local.json
+
+# System & OS Files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Temporary & Swap Files
+*.swp
+*.swo
+*~
+*.tmp
